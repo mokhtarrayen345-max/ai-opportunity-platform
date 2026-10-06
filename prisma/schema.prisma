@@ -22,6 +22,7 @@ model User {
   sources Source[]
   discoveredProblems DiscoveredProblem[]
   prospects Prospect[]
+  problemEvidence ProblemEvidence[]
 
   @@index([createdAt])
 }
