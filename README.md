@@ -1,39 +1,44 @@
-# AI Opportunity Platform — V1 Foundation
+# AI Opportunity Platform — V1 + Persistence & Authentication
 
-V1 supports a real server-side AI provider without changing the existing UI contracts.
+## Stack
+Next.js + React + TypeScript, PostgreSQL, Prisma, custom server-side email/password sessions, Zod, Vitest.
 
-## AI provider architecture
-The existing `AnalysisProvider` and `SolverProvider` interfaces are preserved.
-- `AI_PROVIDER=mock`: deterministic local provider; default and safe offline mode.
-- `AI_PROVIDER=openai`: OpenAI Responses API adapter with automatic mock fallback.
+## Local setup
+1. Install Node.js 22+ and PostgreSQL 16+.
+2. Create a local PostgreSQL database named `ai_opportunity_platform`.
+3. Copy `.env.example` to `.env.local`.
+4. Set `DATABASE_URL` to your local PostgreSQL connection string.
+5. Optionally configure `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and `OPENAI_MODEL`.
+6. Run `npm install`.
+7. Run `npm run db:generate`.
+8. Run `npm run db:migrate -- --name init`.
+9. Run `npm test`, `npm run typecheck`, `npm run build`.
+10. Run `npm run dev`.
 
-The API key is read only from the server-side `OPENAI_API_KEY` environment variable. It is never prefixed with `NEXT_PUBLIC_` and is not exposed to client components.
+## Database
+PostgreSQL is the persistent store and Prisma provides typed queries and migrations. The schema contains User, Session, AnalysisRecord and SolverRecord. Every user-owned record has a foreign key to User and history queries are scoped by the authenticated user id.
 
-## Setup
-1. Install Node.js 20+.
-2. Copy `.env.example` to `.env.local`.
-3. Keep `AI_PROVIDER=mock` for local/offline behavior, or set `AI_PROVIDER=openai`.
-4. Set `OPENAI_API_KEY` in `.env.local` when using OpenAI.
-5. Optionally set `OPENAI_MODEL`; V1 defaults to `gpt-6-luna`.
-6. Run `npm install`, then `npm run dev`.
+## Authentication
+Passwords are never stored plaintext: Node scrypt uses a random per-password salt. Sessions use random opaque tokens; only SHA-256 token hashes are persisted. The browser receives the token only in an httpOnly, sameSite=lax cookie. Protected server routes/pages resolve the current user from that session.
 
-Never commit `.env.local` or API keys.
+The auth service is deliberately isolated so future OAuth/social login can be added without changing the AI history models.
 
-## Failure behavior
-If OpenAI is selected without a key, mock providers are used.
-If an OpenAI request fails, times out, or returns invalid output, the request falls back to the mock provider. Upstream error details are not returned to the browser.
+## Persistence behavior
+Public users can keep using Analyze and Problem Solver. Authenticated users automatically get successful results saved to their own history. Dashboard/history requires authentication.
 
 ## Security
-- No secrets are hardcoded.
-- AI provider code is marked server-only.
-- API routes validate inputs with Zod.
-- No AI secret is included in browser environment variables.
-- Provider failures do not expose upstream error details.
+- No hardcoded secrets.
+- Database and AI credentials are server-only environment variables.
+- No plaintext passwords.
+- Session tokens are hashed in the database.
+- Dashboard and history require server-side authentication.
+- User-owned queries always use the authenticated user id.
+- Inputs are validated with Zod.
+- Existing mock/OpenAI provider and fallback behavior remain intact.
 
 ## Quality checks
 `npm test`
 `npm run typecheck`
 `npm run build`
 
-## Scope
-Still excluded: authentication, database, scraping, Telegram, X/Twitter, mobile app, payments, marketplace, and multi-agent orchestration.
+No deployment is required.
