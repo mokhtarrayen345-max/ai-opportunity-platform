@@ -17,6 +17,7 @@ model User {
   sessions     Session[]
   analyses     AnalysisRecord[]
   solverRuns   SolverRecord[]
+  opportunities OpportunityRecord[]
 
   @@index([createdAt])
 }
@@ -59,4 +60,35 @@ model SolverRecord {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model OpportunityRecord {
+  id String @id @default(cuid())
+  userId String
+  input String
+  title String
+  shortSummary String
+  problemStatement String
+  targetUsers Json
+  marketDomain String
+  painSeverity Int
+  demandSignals Json
+  existingAlternatives Json
+  proposedSolutionDirection String
+  monetizationPossibilities Json
+  estimatedDifficulty Int
+  technicalFeasibility Int
+  businessPotential Int
+  risks Json
+  assumptions Json
+  unknowns Json
+  recommendedNextStep String
+  dimensionScores Json
+  dimensionExplanations Json
+  overallScore Int
+  confidence Int
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@index([userId,createdAt])
+  @@index([userId,overallScore])
 }
