@@ -1,0 +1,2 @@
+import{redirect}from"next/navigation";import{getCurrentUser}from"@/lib/auth";import{SourceIntelligencePanel}from"@/components/source-intelligence-panel";
+export default async function Page(){if(!await getCurrentUser())redirect("/auth");return <div className="container page"><p className="eyebrow">Source Intelligence Map V1</p><h1>Choose the next source to build.</h1><p className="lead narrow">Catalog/research only. No external connector is active. Scores are deterministic and access claims are explicitly qualified.</p><SourceIntelligencePanel/></div>}

@@ -1,0 +1,2 @@
+import {NextResponse}from"next/server";import{getCurrentUser}from"@/lib/auth";import{recommendedSourceOrder}from"@/services/source-intelligence";
+export async function GET(){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Authentication required."},{status:401});return NextResponse.json({sources:await recommendedSourceOrder(u.id)});}

@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {getCurrentUser} from "@/lib/auth";import {getSourceIntelligenceForUser} from "@/services/source-intelligence";
+export async function GET(_r:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Authentication required."},{status:401});const {id}=await params;const s=await getSourceIntelligenceForUser(u.id,id);if(!s)return NextResponse.json({error:"Source intelligence record not found."},{status:404});return NextResponse.json({source:s});}
