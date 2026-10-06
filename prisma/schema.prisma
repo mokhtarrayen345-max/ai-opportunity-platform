@@ -20,6 +20,8 @@ model User {
   opportunities OpportunityRecord[]
   intelligenceSignals IntelligenceSignal[]
   sources Source[]
+  discoveredProblems DiscoveredProblem[]
+  prospects Prospect[]
 
   @@index([createdAt])
 }
@@ -93,6 +95,7 @@ model OpportunityRecord {
   user User @relation(fields:[userId],references:[id],onDelete:Cascade)
   @@index([userId,createdAt])
   @@index([userId,overallScore])
+  discoveredProblem DiscoveredProblem?
 }
 
 
@@ -165,4 +168,98 @@ model SourceHealth {
   source Source @relation(fields:[sourceId],references:[id],onDelete:Cascade)
   @@index([status])
   @@index([updatedAt])
+}
+
+
+model DiscoveredProblem {
+  id String @id @default(cuid())
+  userId String
+  title String
+  normalizedProblemStatement String
+  problemFingerprint String
+  category String
+  severity Int
+  evidenceCount Int @default(0)
+  sourceDiversity Int @default(0)
+  urgency Int
+  affectedAudience String
+  affectedMarket String
+  status String @default("potential")
+  confidence Int
+  recurringScore Int @default(0)
+  recurringExplanation Json
+  opportunityAnalysisId String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  evidence ProblemEvidence[]
+  prospects ProspectProblem[]
+  opportunityAnalysis OpportunityRecord? @relation(fields:[opportunityAnalysisId],references:[id],onDelete:SetNull)
+  @@unique([userId,problemFingerprint])
+  @@index([userId,createdAt])
+  @@index([userId,status])
+  @@index([userId,category])
+  @@index([userId,recurringScore])
+}
+
+model ProblemEvidence {
+  id String @id @default(cuid())
+  userId String
+  problemId String
+  sourceId String?
+  externalReference String?
+  title String
+  summary String
+  observedAt DateTime
+  sourceType String
+  fingerprint String
+  evidenceConfidence Int
+  severity Int
+  urgency Int
+  solutionFit Int
+  businessValueHypothesis Int
+  sourceReference String?
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  problem DiscoveredProblem @relation(fields:[problemId],references:[id],onDelete:Cascade)
+  @@unique([userId,fingerprint])
+  @@index([userId,problemId,observedAt])
+  @@index([userId,sourceId])
+}
+
+model Prospect {
+  id String @id @default(cuid())
+  userId String
+  type String
+  displayName String?
+  organizationName String?
+  publicReference String?
+  sourceReference String?
+  roleCategory String?
+  evidenceCount Int @default(0)
+  fingerprint String
+  confidence Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  problems ProspectProblem[]
+  @@unique([userId,fingerprint])
+  @@index([userId,createdAt])
+  @@index([userId,type])
+}
+
+model ProspectProblem {
+  prospectId String
+  problemId String
+  evidenceCount Int @default(0)
+  qualificationScore Int @default(0)
+  qualificationLevel String @default("LOW")
+  reasons Json
+  confidence Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  prospect Prospect @relation(fields:[prospectId],references:[id],onDelete:Cascade)
+  problem DiscoveredProblem @relation(fields:[problemId],references:[id],onDelete:Cascade)
+  @@id([prospectId,problemId])
+  @@index([problemId,qualificationScore])
 }
