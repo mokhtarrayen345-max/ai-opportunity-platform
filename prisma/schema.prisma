@@ -18,6 +18,7 @@ model User {
   analyses     AnalysisRecord[]
   solverRuns   SolverRecord[]
   opportunities OpportunityRecord[]
+  intelligenceSignals IntelligenceSignal[]
 
   @@index([createdAt])
 }
@@ -91,4 +92,40 @@ model OpportunityRecord {
   user User @relation(fields:[userId],references:[id],onDelete:Cascade)
   @@index([userId,createdAt])
   @@index([userId,overallScore])
+}
+
+
+model IntelligenceSignal {
+  id String @id @default(cuid())
+  userId String
+  title String
+  summary String
+  sourceType String
+  sourceName String
+  sourceUrl String?
+  externalId String?
+  detectedAt DateTime
+  receivedAt DateTime
+  topic String
+  entities Json
+  signalType String
+  rawContent String
+  rawReference String?
+  normalizedContent String
+  sourceFacts Json
+  aiInterpretation Json
+  assumptions Json
+  unknowns Json
+  confidence Int
+  metadata Json
+  fingerprint String
+  opportunityAnalysisStatus String @default("not_analyzed")
+  lastOpportunityAnalyzedAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@unique([userId,fingerprint])
+  @@index([userId,sourceType,createdAt])
+  @@index([userId,receivedAt])
+  @@index([userId,topic])
+  @@index([userId,signalType])
 }
