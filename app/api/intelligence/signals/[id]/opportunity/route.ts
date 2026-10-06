@@ -1,0 +1,4 @@
+import {NextResponse} from "next/server";
+import {getCurrentUser} from "@/lib/auth";
+import {analyzeSignalForOpportunity} from "@/services/intelligence-opportunity";
+export async function POST(_:Request,{params}:{params:Promise<{id:string}>}){try{const user=await getCurrentUser();if(!user)return NextResponse.json({error:"Authentication required."},{status:401});const {id}=await params;return NextResponse.json(await analyzeSignalForOpportunity(user.id,id));}catch(error){if(error instanceof Error&&error.message==="Signal not found.")return NextResponse.json({error:error.message},{status:404});console.error("intelligence_opportunity_error",error);return NextResponse.json({error:"Unable to analyze this signal."},{status:500});}}
