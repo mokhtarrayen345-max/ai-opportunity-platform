@@ -1,0 +1,2 @@
+import { SolverForm } from "@/components/solver-form";
+export default function Solver(){return <div className="container page"><p className="eyebrow">Problem Solver</p><h1>Work through a problem</h1><p className="lead narrow">Describe a technical or business problem. V1 returns a structured mock solution through the same provider interface a real AI service can later implement.</p><SolverForm/></div>}
