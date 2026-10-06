@@ -37,7 +37,7 @@ export class OpenAIProvider implements AnalysisProvider, SolverProvider, Opportu
   private async request(input:string,schema?:Record<string,unknown>):Promise<string>{
     const controller=new AbortController(); const timeout=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);
     try{
-      const response=await this.fetcher(OPENAI_URL,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.apiKey}`},body:JSON.stringify(schema?{model:this.model,input,text:{format:{type:"json_schema",name:"opportunity_assessment",strict:true,schema}}:{model:this.model,input}),signal:controller.signal});
+      const response=await this.fetcher(OPENAI_URL,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${this.apiKey}`},body:JSON.stringify(schema ? {model:this.model,input,text:{format:{type:"json_schema",name:"opportunity_assessment",strict:true,schema}}} : {model:this.model,input}),signal:controller.signal});
       const payload=await response.json() as OpenAIResponse;
       if(!response.ok) throw new OpenAIProviderError("AI provider returned an error.");
       const output=payload.output_text?.trim();
