@@ -1,0 +1,10 @@
+CREATE TABLE "Source" ("id" TEXT NOT NULL,"userId" TEXT NOT NULL,"name" TEXT NOT NULL,"type" TEXT NOT NULL,"enabled" BOOLEAN NOT NULL DEFAULT true,"status" TEXT NOT NULL DEFAULT 'UNKNOWN',"description" TEXT NOT NULL,"config" JSONB NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "Source_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "Source_userId_name_key" ON "Source"("userId","name");
+CREATE INDEX "Source_userId_enabled_idx" ON "Source"("userId","enabled");
+CREATE INDEX "Source_userId_type_idx" ON "Source"("userId","type");
+CREATE TABLE "SourceHealth" ("id" TEXT NOT NULL,"sourceId" TEXT NOT NULL,"lastCheckAt" TIMESTAMP(3),"lastSuccessAt" TIMESTAMP(3),"totalChecks" INTEGER NOT NULL DEFAULT 0,"totalFailures" INTEGER NOT NULL DEFAULT 0,"lastError" TEXT,"latencyMs" INTEGER,"healthScore" INTEGER NOT NULL DEFAULT 0,"status" TEXT NOT NULL DEFAULT 'UNKNOWN',"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "SourceHealth_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "SourceHealth_sourceId_key" ON "SourceHealth"("sourceId");
+CREATE INDEX "SourceHealth_status_idx" ON "SourceHealth"("status");
+CREATE INDEX "SourceHealth_updatedAt_idx" ON "SourceHealth"("updatedAt");
+ALTER TABLE "Source" ADD CONSTRAINT "Source_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SourceHealth" ADD CONSTRAINT "SourceHealth_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "Source"("id") ON DELETE CASCADE ON UPDATE CASCADE;
