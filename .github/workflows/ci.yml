@@ -31,7 +31,7 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run db:generate
-      - run: npm run db:migrate -- --name ci
+      - run: npm run db:migrate:deploy
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
