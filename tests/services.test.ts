@@ -1,0 +1,3 @@
+import {describe,expect,it} from "vitest";
+import {analyzeOpportunity,solveProblem} from "@/services/ai";
+describe("AI service abstractions",()=>{it("returns structured mock analysis for a known opportunity",async()=>{const r=await analyzeOpportunity("local-logistics");expect(r.confidence).toBeGreaterThan(0);expect(r.nextSteps.length).toBeGreaterThan(0);});it("rejects an unknown opportunity",async()=>{await expect(analyzeOpportunity("missing")).rejects.toThrow("Opportunity not found");});it("returns a structured solver response",async()=>{const r=await solveProblem("Our team loses time because project updates are spread across multiple tools.");expect(r.steps.length).toBeGreaterThan(2);expect(r.risks.length).toBeGreaterThan(0);});});
