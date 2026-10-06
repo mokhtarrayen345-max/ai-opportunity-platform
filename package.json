@@ -4,19 +4,26 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
+    "test": "prisma generate && vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "prisma generate && tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "next": "^16.3.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zod": "^4.1.12",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "@better-auth/prisma-adapter": "^1.7.7",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "better-auth": "^1.7.7"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
@@ -24,6 +31,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "prisma": "^7.10.0"
   }
 }
