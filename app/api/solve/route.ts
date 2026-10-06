@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 import { solveProblem } from "@/services/ai";
-const schema=z.object({problem:z.string().trim().min(10).max(4000)});
-export async function POST(request:Request){try{const body=await request.json();const parsed=schema.safeParse(body);if(!parsed.success)return NextResponse.json({error:"Problem must be between 10 and 4000 characters."},{status:400});return NextResponse.json(await solveProblem(parsed.data.problem));}catch(error){console.error("solve_error",error);return NextResponse.json({error:"Unable to solve this problem."},{status:500});}}
+import { saveSolverResult } from "@/services/persistence";
+import { problemSchema } from "@/lib/validation";
+export async function POST(request:Request){try{const parsed=problemSchema.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:"Problem must be between 10 and 4000 characters."},{status:400});const result=await solveProblem(parsed.data.problem);const user=await getCurrentUser();if(user)await saveSolverResult(user.id,parsed.data.problem,result);return NextResponse.json(result);}catch(error){console.error("solve_error",error);return NextResponse.json({error:"Unable to solve this problem."},{status:500});}}
