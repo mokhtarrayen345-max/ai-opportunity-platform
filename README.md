@@ -42,3 +42,12 @@ Public users can keep using Analyze and Problem Solver. Authenticated users auto
 `npm run build`
 
 No deployment is required.
+
+## Opportunity Engine V1
+The Opportunity Engine turns a user-provided problem, idea, or opportunity statement into a structured assessment. V1 does not perform external market research and does not present unverified market claims as facts.
+
+The output separates user-provided facts, AI-generated hypotheses, assumptions, and unknowns. A deterministic scoring layer calculates seven transparent dimensions: problem severity (18%), demand potential (17%), market potential (16%), competition position (10%), technical feasibility (14%), monetization potential (15%), and execution-risk score (10%). All dimensions and the final score are normalized to 0–100. Confidence is calculated separately from evidence and unknowns; it is not a profitability prediction.
+
+Use /opportunities for the UI or POST /api/opportunities with an input string and optional save flag. Saving requires an authenticated session and always uses the server-side session user id. GET /api/opportunities/history returns only the current user’s saved assessments.
+
+The existing mock/OpenAI provider selection and fallback remain the single AI provider architecture. Opportunity analysis is an additional capability on that abstraction, with Zod validation of structured output.
