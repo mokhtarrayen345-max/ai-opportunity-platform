@@ -1,7 +1,7 @@
 import {signalTypes,type IntelligenceSignal} from "@/services/intelligence-domain";
 export interface SignalClassifier{classify(signal:{title:string;summary:string;normalizedContent:string;topic:string}):{signalType:typeof signalTypes[number];confidence:number;aiInterpretation:string[];assumptions:string[];unknowns:string[]}}
 export class DeterministicSignalClassifier implements SignalClassifier{
-  classify(signal:{title:string;summary:string;normalizedContent:string;topic:string}){
+  classify(signal:{title:string;summary:string;normalizedContent:string;topic:string}):{signalType:typeof signalTypes[number];confidence:number;aiInterpretation:string[];assumptions:string[];unknowns:string[]}{
     const text=(signal.title+" "+signal.summary+" "+signal.normalizedContent).toLowerCase();
     const rules:Array<[typeof signalTypes[number],string[]]>=[
       ["user_complaint",["complaint","frustrated","unhappy","complain"]],
