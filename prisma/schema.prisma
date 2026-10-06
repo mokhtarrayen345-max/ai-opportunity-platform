@@ -19,6 +19,7 @@ model User {
   solverRuns   SolverRecord[]
   opportunities OpportunityRecord[]
   intelligenceSignals IntelligenceSignal[]
+  sources Source[]
 
   @@index([createdAt])
 }
@@ -128,4 +129,40 @@ model IntelligenceSignal {
   @@index([userId,receivedAt])
   @@index([userId,topic])
   @@index([userId,signalType])
+}
+
+
+model Source {
+  id String @id
+  userId String
+  name String
+  type String
+  enabled Boolean @default(true)
+  status String @default("UNKNOWN")
+  description String
+  config Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  health SourceHealth?
+  @@unique([userId,name])
+  @@index([userId,enabled])
+  @@index([userId,type])
+}
+
+model SourceHealth {
+  id String @id @default(cuid())
+  sourceId String @unique
+  lastCheckAt DateTime?
+  lastSuccessAt DateTime?
+  totalChecks Int @default(0)
+  totalFailures Int @default(0)
+  lastError String?
+  latencyMs Int?
+  healthScore Int @default(0)
+  status String @default("UNKNOWN")
+  updatedAt DateTime @updatedAt
+  source Source @relation(fields:[sourceId],references:[id],onDelete:Cascade)
+  @@index([status])
+  @@index([updatedAt])
 }
