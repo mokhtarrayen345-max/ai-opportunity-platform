@@ -7,11 +7,7 @@ const DEFAULT_MODEL = "gpt-6-luna";
 const REQUEST_TIMEOUT_MS = 20000;
 
 type FetchLike = typeof fetch;
-
-type OpenAIResponse = {
-  output_text?: string;
-  error?: { message?: string };
-};
+type OpenAIResponse = { output_text?: string; error?: { message?: string } };
 
 export class OpenAIProviderError extends Error {
   constructor(message = "AI provider request failed.") {
@@ -36,15 +32,10 @@ export class OpenAIProvider implements AnalysisProvider, SolverProvider {
       `Opportunity ID: ${itemId}`,
     ].join("\n");
 
-    const result = await this.request(prompt);
-    const parsed = this.parseJson(result);
-    if (
-      typeof parsed.opportunity !== "string" ||
-      typeof parsed.confidence !== "number" ||
-      typeof parsed.whyItMatters !== "string" ||
-      !Array.isArray(parsed.nextSteps) ||
-      parsed.nextSteps.some((step) => typeof step !== "string")
-    ) {
+    const parsed = this.parseJson(await this.request(prompt));
+    if (typeof parsed.opportunity !== "string" || typeof parsed.confidence !== "number" ||
+        typeof parsed.whyItMatters !== "string" || !Array.isArray(parsed.nextSteps) ||
+        parsed.nextSteps.some((step) => typeof step !== "string")) {
       throw new OpenAIProviderError("AI returned an invalid analysis shape.");
     }
 
@@ -56,7 +47,7 @@ export class OpenAIProvider implements AnalysisProvider, SolverProvider {
     };
   }
 
-  async solve(problem: string): Promise<{ summary: string; steps: string[]; risks: string[] }> {
+  async solve(problem: string) {
     const prompt = [
       "Help solve this technical or business problem.",
       "Return ONLY valid JSON with this exact shape:",
@@ -65,15 +56,10 @@ export class OpenAIProvider implements AnalysisProvider, SolverProvider {
       `Problem:\n${problem}`,
     ].join("\n");
 
-    const result = await this.request(prompt);
-    const parsed = this.parseJson(result);
-    if (
-      typeof parsed.summary !== "string" ||
-      !Array.isArray(parsed.steps) ||
-      !Array.isArray(parsed.risks) ||
-      parsed.steps.some((step) => typeof step !== "string") ||
-      parsed.risks.some((risk) => typeof risk !== "string")
-    ) {
+    const parsed = this.parseJson(await this.request(prompt));
+    if (typeof parsed.summary !== "string" || !Array.isArray(parsed.steps) ||
+        !Array.isArray(parsed.risks) || parsed.steps.some((step) => typeof step !== "string") ||
+        parsed.risks.some((risk) => typeof risk !== "string")) {
       throw new OpenAIProviderError("AI returned an invalid solver shape.");
     }
 
@@ -87,31 +73,17 @@ export class OpenAIProvider implements AnalysisProvider, SolverProvider {
   private async request(input: string): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
     try {
       const response = await this.fetcher(OPENAI_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.model,
-          input,
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify({ model: this.model, input }),
         signal: controller.signal,
       });
-
       const payload = (await response.json()) as OpenAIResponse;
-      if (!response.ok) {
-        throw new OpenAIProviderError("AI provider returned an error.");
-      }
-
+      if (!response.ok) throw new OpenAIProviderError("AI provider returned an error.");
       const output = payload.output_text?.trim();
-      if (!output) {
-        throw new OpenAIProviderError("AI provider returned no usable output.");
-      }
-
+      if (!output) throw new OpenAIProviderError("AI provider returned no usable output.");
       return output;
     } catch (error) {
       if (error instanceof OpenAIProviderError) throw error;
@@ -122,10 +94,7 @@ export class OpenAIProvider implements AnalysisProvider, SolverProvider {
   }
 
   private parseJson(value: string): Record<string, unknown> {
-    try {
-      return JSON.parse(value) as Record<string, unknown>;
-    } catch {
-      throw new OpenAIProviderError("AI provider returned invalid JSON.");
-    }
+    try { return JSON.parse(value) as Record<string, unknown>; }
+    catch { throw new OpenAIProviderError("AI provider returned invalid JSON."); }
   }
 }
