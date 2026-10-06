@@ -1,0 +1,7 @@
+import {describe,expect,it,vi} from "vitest";
+import {OpenAIProvider} from "@/services/openai-provider";
+function response(body:unknown,ok=true){return Promise.resolve({ok,json:async()=>body} as Response)}
+describe("OpenAI provider",()=>{
+ it("maps a successful response to the existing analysis contract",async()=>{const fetcher=vi.fn().mockImplementation(()=>response({output_text:JSON.stringify({opportunity:"A validated opportunity",confidence:91,whyItMatters:"Customers experience repeated friction.",nextSteps:["Interview users","Measure frequency","Test demand"]})}));const p=new OpenAIProvider("secret-test-key","test-model",fetcher);const r=await p.analyze("local-logistics");expect(r.confidence).toBe(91);expect(r.nextSteps).toHaveLength(3);expect(fetcher).toHaveBeenCalledOnce();expect(fetcher.mock.calls[0][1]).toMatchObject({headers:expect.objectContaining({Authorization:"Bearer secret-test-key"})});});
+ it("throws a safe error when unavailable",async()=>{const fetcher=vi.fn().mockRejectedValue(new Error("network failure"));const p=new OpenAIProvider("secret-test-key","test-model",fetcher);await expect(p.solve("A business problem")).rejects.toThrow("AI provider is unavailable.");});
+});
