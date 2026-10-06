@@ -1,0 +1,3 @@
+import {OpportunityEngineForm} from "@/components/opportunity-engine-form";
+import Link from "next/link";
+export default function Opportunities(){return <div className="container page"><p className="eyebrow">Opportunity Engine V1</p><h1>Turn an input into a structured opportunity assessment.</h1><p className="lead narrow">Use a problem, idea, or opportunity statement. The engine separates user facts, AI hypotheses, assumptions, and unknowns; it does not claim external market research.</p><OpportunityEngineForm/><div className="actions"><Link className="button" href="/dashboard">View saved history</Link></div></div>}
