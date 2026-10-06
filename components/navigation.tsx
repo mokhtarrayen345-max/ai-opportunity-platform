@@ -1,0 +1,2 @@
+import Link from "next/link";
+export function Navigation(){return <header className="nav"><div className="nav-inner"><Link className="brand" href="/">Opportunity<span>AI</span></Link><nav><Link href="/discover">Discover</Link><Link href="/solver">Problem Solver</Link></nav></div></header>}
