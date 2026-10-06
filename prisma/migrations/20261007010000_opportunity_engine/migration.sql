@@ -1,0 +1,6 @@
+CREATE TABLE "OpportunityRecord" (
+"id" TEXT NOT NULL,"userId" TEXT NOT NULL,"input" TEXT NOT NULL,"title" TEXT NOT NULL,"shortSummary" TEXT NOT NULL,"problemStatement" TEXT NOT NULL,"targetUsers" JSONB NOT NULL,"marketDomain" TEXT NOT NULL,"painSeverity" INTEGER NOT NULL,"demandSignals" JSONB NOT NULL,"existingAlternatives" JSONB NOT NULL,"proposedSolutionDirection" TEXT NOT NULL,"monetizationPossibilities" JSONB NOT NULL,"estimatedDifficulty" INTEGER NOT NULL,"technicalFeasibility" INTEGER NOT NULL,"businessPotential" INTEGER NOT NULL,"risks" JSONB NOT NULL,"assumptions" JSONB NOT NULL,"unknowns" JSONB NOT NULL,"recommendedNextStep" TEXT NOT NULL,"dimensionScores" JSONB NOT NULL,"dimensionExplanations" JSONB NOT NULL,"overallScore" INTEGER NOT NULL,"confidence" INTEGER NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CONSTRAINT "OpportunityRecord_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "OpportunityRecord_userId_createdAt_idx" ON "OpportunityRecord"("userId","createdAt");
+CREATE INDEX "OpportunityRecord_userId_overallScore_idx" ON "OpportunityRecord"("userId","overallScore");
+ALTER TABLE "OpportunityRecord" ADD CONSTRAINT "OpportunityRecord_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
