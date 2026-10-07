@@ -27,6 +27,7 @@ model User {
   diagnosisTargets DiagnosisTarget[]
   diagnosisRuns DiagnosisRun[]
   diagnosticFindings DiagnosticFinding[]
+  repairPlans RepairPlan[]
 
   @@index([createdAt])
 }
@@ -320,6 +321,7 @@ model DiagnosisRun {
   user User @relation(fields:[userId],references:[id],onDelete:Cascade)
   target DiagnosisTarget @relation(fields:[targetId],references:[id],onDelete:Cascade)
   findings DiagnosticFinding[]
+  repairPlans RepairPlan[]
   @@index([userId,createdAt])
   @@index([userId,targetId])
 }
@@ -347,7 +349,70 @@ model DiagnosticFinding {
   user User @relation(fields:[userId],references:[id],onDelete:Cascade)
   target DiagnosisTarget @relation(fields:[targetId],references:[id],onDelete:Cascade)
   run DiagnosisRun @relation(fields:[runId],references:[id],onDelete:Cascade)
+  repairStepFindings RepairStepFinding[]
   @@index([userId,runId])
   @@index([userId,targetId])
   @@index([userId,severity])
+}
+
+model RepairPlan {
+  id String @id @default(cuid())
+  userId String
+  diagnosisRunId String
+  title String
+  summary String
+  status String @default("DRAFT")
+  overallRisk String
+  estimatedEffortMinutes Int
+  estimatedEffortRange String
+  confidence Int
+  facts Json
+  hypotheses Json
+  unknowns Json
+  assumptions Json
+  limitations Json
+  requiresApproval Boolean @default(true)
+  approvalStatus String @default("PENDING")
+  approvedAt DateTime?
+  approvedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  diagnosisRun DiagnosisRun @relation(fields:[diagnosisRunId],references:[id],onDelete:Cascade)
+  steps RepairStep[]
+  @@index([userId,createdAt])
+  @@index([userId,diagnosisRunId])
+  @@index([userId,status])
+}
+
+model RepairStep {
+  id String @id @default(cuid())
+  repairPlanId String
+  order Int
+  title String
+  description String
+  objective String
+  category String
+  affectedArea String
+  dependencies Json
+  evidence Json
+  risk String
+  estimatedEffortMinutes Int
+  verificationMethod String
+  rollbackAction String
+  requiresApproval Boolean @default(true)
+  createdAt DateTime @default(now())
+  repairPlan RepairPlan @relation(fields:[repairPlanId],references:[id],onDelete:Cascade)
+  findings RepairStepFinding[]
+  @@unique([repairPlanId,order])
+  @@index([repairPlanId])
+}
+
+model RepairStepFinding {
+  repairStepId String
+  findingId String
+  repairStep RepairStep @relation(fields:[repairStepId],references:[id],onDelete:Cascade)
+  finding DiagnosticFinding @relation(fields:[findingId],references:[id],onDelete:Cascade)
+  @@id([repairStepId,findingId])
+  @@index([findingId])
 }
