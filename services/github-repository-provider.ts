@@ -50,6 +50,7 @@ export class GitHubRepositoryProvider{
    return {owner:p.owner,name:p.name,fullName:data.full_name,defaultBranch:data.default_branch,private:Boolean(data.private)};
  }
  async createBranch(identifier:string,branch:string,defaultBranch:string){
+   if(process.env.GITHUB_REPAIR_EXECUTION_ENABLED!=="true") throw new Error("GitHub repair write execution is disabled until secure runtime authorization is configured.");
    const p=parseIdentifier(identifier); assertAllowed(p.fullName);
    if(!/^repair\/[A-Za-z0-9_-]+$/.test(branch)||protectedBranches.has(branch)) throw new Error("Unsafe repair branch.");
    const base=await (await gh(`/repos/${p.owner}/${p.name}/git/ref/heads/${encodeURIComponent(defaultBranch)}`)).json() as any;
