@@ -29,6 +29,7 @@ model User {
   diagnosticFindings DiagnosticFinding[]
   repairPlans RepairPlan[]
   authorizedRepositories AuthorizedRepository[]
+  githubAuthorizationStates GithubAuthorizationState[]
   repairExecutions RepairExecution[]
   repairReviews RepairReview[]
 
@@ -435,6 +436,9 @@ model AuthorizedRepository {
   allowedBranches Json
   authorizationStatus String @default("ACTIVE")
   grantedScopes Json
+  githubRepositoryId String?
+  installationId String?
+  authorizedAt DateTime?
   revokedAt DateTime?
   status String @default("ACTIVE")
   createdAt DateTime @default(now())
@@ -566,4 +570,17 @@ model RepairReviewFinding {
   @@index([reviewId,createdAt])
   @@index([reviewId,blocking])
   @@index([severity])
+}
+
+model GithubAuthorizationState {
+  id String @id @default(cuid())
+  userId String
+  stateHash String @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  installationId String?
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@index([userId,expiresAt])
+  @@index([expiresAt])
 }
