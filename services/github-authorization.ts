@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { getPrisma } from "@/lib/db";
 import { isGitHubAppConfigured, listInstallationRepositories } from "@/services/github-app-client";
-import { createAuthorizationState, validateAuthorizationState } from "@/services/github-authorization-state";
+import { createAuthorizationState, hashAuthorizationState, validateAuthorizationState } from "@/services/github-authorization-state";
 
 const STATE_COOKIE="aop_github_authorization";
 
@@ -47,7 +47,7 @@ async function userInstallations(token:string){
 export async function completeGitHubAuthorization(userId:string,state:string,code:string,callbackInstallationId?:string){
   if(!state||!code) throw new Error("GitHub authorization callback is incomplete.");
   const p=getPrisma();
-  const record=await p.githubAuthorizationState.findFirst({where:{userId,consumedAt:null}});
+  const record=await p.githubAuthorizationState.findFirst({where:{userId,stateHash:hashAuthorizationState(state),consumedAt:null}});
   if(!record||!validateAuthorizationState(record,userId,state)) throw new Error("GitHub authorization state is invalid or expired.");
   const store=await cookies();
   const token=await exchangeCode(code);
