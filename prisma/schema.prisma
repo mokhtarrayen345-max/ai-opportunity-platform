@@ -463,6 +463,7 @@ model RepairExecution {
   changes RepairChange[]
   tests RepairTestResult[]
   verifications RepairVerificationResult[]
+  repairReviews RepairReview[]
   @@index([userId,createdAt])
   @@index([userId,status])
   @@index([userId,repairPlanId])
