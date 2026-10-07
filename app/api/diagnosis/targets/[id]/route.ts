@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {getCurrentUser} from "@/lib/auth";import {getPrisma} from "@/lib/db";
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Authentication required."},{status:401});const t=await getPrisma().diagnosisTarget.findFirst({where:{id:(await params).id,userId:u.id}});if(!t)return NextResponse.json({error:"Diagnosis target not found."},{status:404});return NextResponse.json({target:t})}
