@@ -17,7 +17,7 @@ export function evaluateEvidenceQuality(evidence:ValidationEvidence[],problemSta
  for(const item of evidence){const key=item.fingerprint.trim()||[item.sourceId??"",item.title,item.observedAt].join("|");if(byFingerprint.has(key)){duplicateCount++;continue}byFingerprint.set(key,item)}
  const unique=[...byFingerprint.values()];
  if(!unique.length)return evidenceQualityResultSchema.parse({qualityScore:0,validationStatus:"UNVALIDATED",confidence:0,reasons:["No supporting evidence is currently available."],supportingEvidenceCount:0,distinctSourceCount:0,recentEvidenceCount:0,duplicateCount,facts:[],hypotheses:[],assumptions:["The problem cannot be validated without source evidence."],unknowns:["Whether the problem is real, recurring, urgent, or broadly affected."]});
- const distinctSources=new Set(unique.map(x=>(x.sourceId||x.sourceType).toLowerCase())).size;
+ const distinctSources=new Set(unique.map(x=>x.sourceType.trim().toLowerCase())).size;
  const recent=unique.filter(x=>recencyScore(new Date(x.observedAt),now.getTime())>=50).length;
  const sourceReliabilityScore=Math.round(unique.reduce((s,x)=>s+reliability(x.sourceType),0)/unique.length);
  const diversityScore=Math.min(100,distinctSources*25),countScore=Math.min(100,unique.length*12.5);
