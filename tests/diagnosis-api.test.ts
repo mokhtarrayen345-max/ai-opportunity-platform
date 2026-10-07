@@ -1,0 +1,11 @@
+import{beforeEach,describe,expect,it,vi}from"vitest";
+const auth={getCurrentUser:vi.fn()},db={diagnosisRun:{findFirst:vi.fn()},diagnosticFinding:{findMany:vi.fn()}};
+vi.mock("@/lib/auth",()=>auth);vi.mock("@/lib/db",()=>({getPrisma:()=>db}));
+import{GET}from"@/app/api/diagnosis/runs/[id]/findings/route";
+describe("diagnosis findings endpoint",()=>{beforeEach(()=>vi.clearAllMocks());
+it("rejects unauthenticated requests",async()=>{auth.getCurrentUser.mockResolvedValue(null);const r=await GET(new Request("http://localhost"),{params:Promise.resolve({id:"r1"})});expect(r.status).toBe(401);});
+it("allows the owner and returns findings",async()=>{auth.getCurrentUser.mockResolvedValue({id:"u1"});db.diagnosisRun.findFirst.mockResolvedValue({id:"r1"});db.diagnosticFinding.findMany.mockResolvedValue([{id:"f1",runId:"r1",userId:"u1"}]);const r=await GET(new Request("http://localhost"),{params:Promise.resolve({id:"r1"})});expect(r.status).toBe(200);expect(await r.json()).toEqual({items:[{id:"f1",runId:"r1",userId:"u1"}]});expect(db.diagnosticFinding.findMany).toHaveBeenCalledWith({where:{runId:"r1",userId:"u1"},orderBy:{createdAt:"asc"}});});
+it("isolates another user's run",async()=>{auth.getCurrentUser.mockResolvedValue({id:"u2"});db.diagnosisRun.findFirst.mockResolvedValue(null);const r=await GET(new Request("http://localhost"),{params:Promise.resolve({id:"r1"})});expect(r.status).toBe(404);expect(db.diagnosticFinding.findMany).not.toHaveBeenCalled();});
+it("returns safe 404 for nonexistent run",async()=>{auth.getCurrentUser.mockResolvedValue({id:"u1"});db.diagnosisRun.findFirst.mockResolvedValue(null);const r=await GET(new Request("http://localhost"),{params:Promise.resolve({id:"missing"})});expect(r.status).toBe(404);expect(await r.json()).toEqual({error:"Diagnosis run not found."});});
+it("uses authenticated user ownership rather than client userId",async()=>{auth.getCurrentUser.mockResolvedValue({id:"u1"});db.diagnosisRun.findFirst.mockResolvedValue({id:"r1"});db.diagnosticFinding.findMany.mockResolvedValue([]);await GET(new Request("http://localhost?userId=attacker"),{params:Promise.resolve({id:"r1"})});expect(db.diagnosisRun.findFirst).toHaveBeenCalledWith({where:{id:"r1",userId:"u1"},select:{id:true}});});
+});
