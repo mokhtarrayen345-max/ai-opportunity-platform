@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {getCurrentUser} from "@/lib/auth";import {getPrisma} from "@/lib/db";
+export async function GET(){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Authentication required."},{status:401});const runs=await getPrisma().diagnosisRun.findMany({where:{userId:u.id},orderBy:{createdAt:"desc"},take:50,include:{target:true}});return NextResponse.json({runs});}
