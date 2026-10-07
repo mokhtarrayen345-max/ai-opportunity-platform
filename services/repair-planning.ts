@@ -30,8 +30,12 @@ export async function createRepairPlan(userId:string,diagnosisRunId:string,plann
  });
  return plan;
 }
-export async function listRepairPlans(userId:string){return getPrisma().repairPlan.findMany({where:{userId},orderBy:{createdAt:"desc"},include:{diagnosisRun:{include:{target:true}},steps:{orderBy:{order:"asc"},include:{findings:true}}})}
-export async function getRepairPlan(userId:string,id:string){return getPrisma().repairPlan.findFirst({where:{id,userId},include:{diagnosisRun:{include:{target:true}},steps:{orderBy:{order:"asc"},include:{findings:true}}})}
+export async function listRepairPlans(userId:string){
+ return getPrisma().repairPlan.findMany({where:{userId},orderBy:{createdAt:"desc"},include:{diagnosisRun:{include:{target:true}},steps:{orderBy:{order:"asc"},include:{findings:true}}}});
+}
+export async function getRepairPlan(userId:string,id:string){
+ return getPrisma().repairPlan.findFirst({where:{id,userId},include:{diagnosisRun:{include:{target:true}},steps:{orderBy:{order:"asc"},include:{findings:true}}}});
+}
 export async function reviewRepairPlan(userId:string,id:string,decision:"APPROVED"|"REJECTED"){
  const prisma=getPrisma();const plan=await prisma.repairPlan.findFirst({where:{id,userId}});
  if(!plan)throw new Error("Repair plan not found.");
