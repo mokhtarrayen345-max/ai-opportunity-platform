@@ -51,7 +51,7 @@ export class GitHubRepositoryProvider{
  }
  async createBranch(identifier:string,branch:string,defaultBranch:string){
    const p=parseIdentifier(identifier); assertAllowed(p.fullName);
-   if(!/^repair\/[A-Za-z0-9_-]+$/.test(branch)||protectedBranches.has(branch)||protectedBranches.has(defaultBranch.toLowerCase())) throw new Error("Unsafe repair branch.");
+   if(!/^repair\/[A-Za-z0-9_-]+$/.test(branch)||protectedBranches.has(branch)) throw new Error("Unsafe repair branch.");
    const base=await (await gh(`/repos/${p.owner}/${p.name}/git/ref/heads/${encodeURIComponent(defaultBranch)}`)).json() as any;
    const res=await gh(`/repos/${p.owner}/${p.name}/git/refs`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ref:`refs/heads/${branch}`,sha:base.object?.sha})});
    return (await res.json()) as {ref:string};
