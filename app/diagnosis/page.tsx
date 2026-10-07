@@ -1,0 +1,2 @@
+import{redirect}from"next/navigation";import{getCurrentUser}from"@/lib/auth";import{DiagnosisPanel}from"@/components/diagnosis-panel";
+export default async function Diagnosis(){if(!await getCurrentUser())redirect("/auth");return <div className="container page"><p className="eyebrow">Website / System Diagnosis V1</p><h1>Diagnose authorized web targets safely.</h1><p className="lead narrow">Bounded, non-invasive checks produce evidence-backed findings. Hypotheses and repair estimates are explicitly labeled and are not guarantees.</p><DiagnosisPanel/></div>}
