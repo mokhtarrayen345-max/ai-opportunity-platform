@@ -28,6 +28,8 @@ model User {
   diagnosisRuns DiagnosisRun[]
   diagnosticFindings DiagnosticFinding[]
   repairPlans RepairPlan[]
+  authorizedRepositories AuthorizedRepository[]
+  repairExecutions RepairExecution[]
 
   @@index([createdAt])
 }
@@ -415,4 +417,103 @@ model RepairStepFinding {
   finding DiagnosticFinding @relation(fields:[findingId],references:[id],onDelete:Cascade)
   @@id([repairStepId,findingId])
   @@index([findingId])
+}
+
+
+model AuthorizedRepository {
+  id String @id @default(cuid())
+  userId String
+  name String
+  repositoryIdentifier String
+  workspaceRef String @unique
+  defaultBranch String @default("main")
+  allowedBranches Json
+  status String @default("ACTIVE")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  executions RepairExecution[]
+  @@index([userId,createdAt])
+  @@index([userId,status])
+}
+
+model RepairExecution {
+  id String @id @default(cuid())
+  userId String
+  repairPlanId String
+  authorizedRepositoryId String
+  status String @default("PENDING")
+  authorizationStatus String @default("NOT_AUTHORIZED")
+  workspaceId String?
+  branchName String?
+  startedAt DateTime?
+  completedAt DateTime?
+  error String?
+  summary String?
+  authorizedAt DateTime?
+  authorizedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  repairPlan RepairPlan @relation(fields:[repairPlanId],references:[id],onDelete:Cascade)
+  authorizedRepository AuthorizedRepository @relation(fields:[authorizedRepositoryId],references:[id],onDelete:Cascade)
+  events RepairExecutionEvent[]
+  changes RepairChange[]
+  tests RepairTestResult[]
+  verifications RepairVerificationResult[]
+  @@index([userId,createdAt])
+  @@index([userId,status])
+  @@index([userId,repairPlanId])
+  @@index([userId,authorizationStatus])
+}
+
+model RepairExecutionEvent {
+  id String @id @default(cuid())
+  executionId String
+  eventType String
+  repairStepId String?
+  message String
+  status String
+  createdAt DateTime @default(now())
+  execution RepairExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
+  @@index([executionId,createdAt])
+}
+
+model RepairChange {
+  id String @id @default(cuid())
+  executionId String
+  repairStepId String?
+  filePath String
+  changeType String
+  reason String
+  validationResult String?
+  createdAt DateTime @default(now())
+  execution RepairExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
+  @@index([executionId,createdAt])
+}
+
+model RepairTestResult {
+  id String @id @default(cuid())
+  executionId String
+  repairStepId String?
+  command String
+  status String
+  outputSummary String?
+  startedAt DateTime
+  completedAt DateTime?
+  execution RepairExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
+  @@index([executionId,createdAt])
+  @@index([executionId,status])
+}
+
+model RepairVerificationResult {
+  id String @id @default(cuid())
+  executionId String
+  repairStepId String?
+  method String
+  status String
+  details String
+  createdAt DateTime @default(now())
+  execution RepairExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
+  @@index([executionId,createdAt])
 }
