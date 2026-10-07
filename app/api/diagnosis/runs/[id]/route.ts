@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {getCurrentUser} from "@/lib/auth";import {getDiagnosisRun} from "@/services/diagnosis-findings";
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Authentication required."},{status:401});const r=await getDiagnosisRun(u.id,(await params).id);if(!r)return NextResponse.json({error:"Diagnosis run not found."},{status:404});return NextResponse.json({run:r})}
