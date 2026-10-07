@@ -57,7 +57,7 @@ export class GitHubRepositoryProvider{
     if(process.env.GITHUB_REPAIR_EXECUTION_ENABLED!=="true") throw new Error("GitHub repair write execution is disabled by default.");
     const meta=await this.validateAuthorizedRepository(repo);
     if(!/^repair\/[A-Za-z0-9_-]+$/.test(branch)||protectedBranches.has(branch)||branch===meta.defaultBranch) throw new Error("Unsafe repair branch.");
-    const token=await createInstallationToken(repo.installationId!,repo.githubRepositoryId!);
+    const token=await createInstallationToken(repo.installationId!,repo.githubRepositoryId!,true);
     try{
       const base=await (await githubFetch("/repos/"+encodeURIComponent(meta.owner)+"/"+encodeURIComponent(meta.name)+"/git/ref/heads/"+encodeURIComponent(meta.defaultBranch),token.token)).json() as any;
       if(!base.object?.sha) throw new Error("Unable to resolve the protected default branch.");
