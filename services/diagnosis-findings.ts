@@ -1,0 +1,3 @@
+import {getPrisma} from "@/lib/db";
+export function getDiagnosisRun(userId:string,runId:string){return getPrisma().diagnosisRun.findFirst({where:{id:runId,userId},include:{target:true,findings:{orderBy:{createdAt:"desc"}}}})}
+export function getDiagnosisFindings(userId:string,runId:string,severity?:string){return getPrisma().diagnosticFinding.findMany({where:{userId,runId,...(severity?{severity}:{})},orderBy:{createdAt:"desc"}})}
