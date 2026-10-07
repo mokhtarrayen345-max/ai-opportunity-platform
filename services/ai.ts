@@ -12,7 +12,7 @@ export interface SolverProvider{solve(problem:string):Promise<SolverResult>}
 export interface OpportunityProvider{analyzeOpportunity(input:string):Promise<OpportunityDraft>}
 export interface RepairPlanProvider{plan(context:RepairPlanningContext,instructions?:string):Promise<RepairPlanDraft>}
 
-export interface RepairReviewProvider{review(context:unknown):Promise<{summary:string;findings:Array<{category:"QA"|"SECURITY"|"AUTHORIZATION"|"TESTING"|"BUILD"|"DEPENDENCY"|"CONFIGURATION"|"DATABASE"|"INFRASTRUCTURE"|"CI"|"CODE_QUALITY"|"SCOPE";severity:"INFO"|"LOW"|"MEDIUM"|"HIGH"|"CRITICAL";title:string;description:string;evidence:string;filePath?:string|null;ruleId:string;blocking:boolean;recommendation:string;source:"AI"}>}>}
+export interface RepairReviewProvider{review(context:unknown):Promise<unknown>}
 export class MockRepairReviewProvider implements RepairReviewProvider{async review(){return{summary:"Deterministic security policy is authoritative; mock AI review found no additional advisory findings.",findings:[]}}}
 export type AIProviderName="mock"|"openai";
 export class MockAnalysisProvider implements AnalysisProvider{async analyze(itemId:string):Promise<Analysis>{const item=opportunities.find(x=>x.id===itemId);if(!item)throw new Error("Opportunity not found");return {opportunity:item.title,confidence:88,whyItMatters:"The signal suggests a meaningful workflow problem with a clear user group. Validate frequency, willingness to pay, and existing alternatives before building.",nextSteps:["Interview 3–5 target users","Measure how often the problem occurs","Map current alternatives and switching costs"]};}}
