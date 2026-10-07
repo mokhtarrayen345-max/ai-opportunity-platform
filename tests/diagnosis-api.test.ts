@@ -1,5 +1,5 @@
 import{beforeEach,describe,expect,it,vi}from"vitest";
-const auth={getCurrentUser:vi.fn()},db={diagnosisRun:{findFirst:vi.fn()},diagnosticFinding:{findMany:vi.fn()}};
+const {auth,db}=vi.hoisted(()=>({auth:{getCurrentUser:vi.fn()},db:{diagnosisRun:{findFirst:vi.fn()},diagnosticFinding:{findMany:vi.fn()}}}));
 vi.mock("@/lib/auth",()=>auth);vi.mock("@/lib/db",()=>({getPrisma:()=>db}));
 import{GET}from"@/app/api/diagnosis/runs/[id]/findings/route";
 describe("diagnosis findings endpoint",()=>{beforeEach(()=>vi.clearAllMocks());
