@@ -11,6 +11,7 @@ CREATE TABLE "GithubAuthorizationState" (
   "expiresAt" TIMESTAMP(3) NOT NULL,
   "consumedAt" TIMESTAMP(3),
   "installationId" TEXT,
+  "availableInstallations" JSONB NOT NULL DEFAULT '[]'::jsonb,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "GithubAuthorizationState_pkey" PRIMARY KEY ("id")
 );
