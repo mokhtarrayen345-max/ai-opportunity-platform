@@ -1,0 +1,14 @@
+CREATE TABLE "RepairPlan" ("id" TEXT NOT NULL,"userId" TEXT NOT NULL,"diagnosisRunId" TEXT NOT NULL,"title" TEXT NOT NULL,"summary" TEXT NOT NULL,"status" TEXT NOT NULL DEFAULT 'DRAFT',"overallRisk" TEXT NOT NULL,"estimatedEffortMinutes" INTEGER NOT NULL,"estimatedEffortRange" TEXT NOT NULL,"confidence" INTEGER NOT NULL,"facts" JSONB NOT NULL,"hypotheses" JSONB NOT NULL,"unknowns" JSONB NOT NULL,"assumptions" JSONB NOT NULL,"limitations" JSONB NOT NULL,"requiresApproval" BOOLEAN NOT NULL DEFAULT true,"approvalStatus" TEXT NOT NULL DEFAULT 'PENDING',"approvedAt" TIMESTAMP(3),"approvedBy" TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "RepairPlan_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "RepairStep" ("id" TEXT NOT NULL,"repairPlanId" TEXT NOT NULL,"order" INTEGER NOT NULL,"title" TEXT NOT NULL,"description" TEXT NOT NULL,"objective" TEXT NOT NULL,"category" TEXT NOT NULL,"affectedArea" TEXT NOT NULL,"dependencies" JSONB NOT NULL,"evidence" JSONB NOT NULL,"risk" TEXT NOT NULL,"estimatedEffortMinutes" INTEGER NOT NULL,"verificationMethod" TEXT NOT NULL,"rollbackAction" TEXT NOT NULL,"requiresApproval" BOOLEAN NOT NULL DEFAULT true,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "RepairStep_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "RepairStepFinding" ("repairStepId" TEXT NOT NULL,"findingId" TEXT NOT NULL,CONSTRAINT "RepairStepFinding_pkey" PRIMARY KEY ("repairStepId","findingId"));
+CREATE INDEX "RepairPlan_userId_createdAt_idx" ON "RepairPlan"("userId","createdAt");
+CREATE INDEX "RepairPlan_userId_diagnosisRunId_idx" ON "RepairPlan"("userId","diagnosisRunId");
+CREATE INDEX "RepairPlan_userId_status_idx" ON "RepairPlan"("userId","status");
+CREATE UNIQUE INDEX "RepairStep_repairPlanId_order_key" ON "RepairStep"("repairPlanId","order");
+CREATE INDEX "RepairStep_repairPlanId_idx" ON "RepairStep"("repairPlanId");
+CREATE INDEX "RepairStepFinding_findingId_idx" ON "RepairStepFinding"("findingId");
+ALTER TABLE "RepairPlan" ADD CONSTRAINT "RepairPlan_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "RepairPlan" ADD CONSTRAINT "RepairPlan_diagnosisRunId_fkey" FOREIGN KEY ("diagnosisRunId") REFERENCES "DiagnosisRun"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "RepairStep" ADD CONSTRAINT "RepairStep_repairPlanId_fkey" FOREIGN KEY ("repairPlanId") REFERENCES "RepairPlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "RepairStepFinding" ADD CONSTRAINT "RepairStepFinding_repairStepId_fkey" FOREIGN KEY ("repairStepId") REFERENCES "RepairStep"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "RepairStepFinding" ADD CONSTRAINT "RepairStepFinding_findingId_fkey" FOREIGN KEY ("findingId") REFERENCES "DiagnosticFinding"("id") ON DELETE CASCADE ON UPDATE CASCADE;
