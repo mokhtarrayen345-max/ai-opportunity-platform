@@ -1,0 +1,7 @@
+import {z} from "zod";
+export const severitySchema=z.enum(["INFO","LOW","MEDIUM","HIGH","CRITICAL"]);export type Severity=z.infer<typeof severitySchema>;
+export const statusSchema=z.enum(["OBSERVED","INDICATOR","ERROR","UNKNOWN"]);
+export type DiagnosticFindingInput={targetId:string;category:string;title:string;description:string;severity:Severity;status:z.infer<typeof statusSchema>;observedValue?:string|null;expectedValue?:string|null;evidence:unknown;rootCauseHypothesis?:string|null;confidence:number;facts:string[];hypotheses:string[];unknowns:string[];recommendation:string;estimatedEffortMinutes:number};
+const base:Record<string,number>={availability:120,https:60,headers:45,performance:180,content:90,api_health:120};
+export function estimateRepairMinutes(category:string,severity:Severity){const m=severity==="CRITICAL"?2:severity==="HIGH"?1.5:severity==="MEDIUM"?1:.75;return Math.round((base[category]??90)*m)}
+export function overallDiagnosisStatus(f:DiagnosticFindingInput[],done:number,failed:number){if(!done)return"UNKNOWN";if(f.some(x=>x.severity==="CRITICAL"))return"CRITICAL";if(f.some(x=>x.severity==="HIGH"))return"DEGRADED";if(f.some(x=>x.severity==="MEDIUM"||x.severity==="LOW"))return"NEEDS_ATTENTION";return failed?"UNKNOWN":"HEALTHY"}
