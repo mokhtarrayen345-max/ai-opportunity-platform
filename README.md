@@ -51,3 +51,14 @@ The output separates user-provided facts, AI-generated hypotheses, assumptions, 
 Use /opportunities for the UI or POST /api/opportunities with an input string and optional save flag. Saving requires an authenticated session and always uses the server-side session user id. GET /api/opportunities/history returns only the current user’s saved assessments.
 
 The existing mock/OpenAI provider selection and fallback remain the single AI provider architecture. Opportunity analysis is an additional capability on that abstraction, with Zod validation of structured output.
+
+
+## Secure GitHub Authorization V1
+
+GitHub repository authorization uses a GitHub App installation flow with server-side verification. Users never paste a personal access token, password, or private key into the platform. The server creates a short-lived cryptographically random state bound to the authenticated platform user, receives the GitHub OAuth callback, verifies the user's GitHub App installations, and only then allows selection from repositories returned by GitHub.
+
+Configure a GitHub App with **Request user authorization (OAuth) during installation**, a callback URL matching `GITHUB_APP_CALLBACK_URL`, and only the minimum repository permissions required by the next execution stage (Metadata read; Contents write is required only for future repair-branch writes). Set `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY`, and `GITHUB_APP_SLUG` only as server-side environment variables. Never put these values in Prisma, browser code, AI prompts, logs, or audit events.
+
+The existing `GITHUB_ALLOWED_REPOSITORIES` allowlist remains an additional boundary. Revocation changes the owned `AuthorizedRepository` to `REVOKED` and blocks future execution while preserving historical records.
+
+Real GitHub repair writes remain **disabled by default**: `GITHUB_REPAIR_EXECUTION_ENABLED=false`. This feature does not enable writes, automatic merge, or deployment. The existing QA + Security Review gate remains mandatory.
