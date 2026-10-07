@@ -53,7 +53,8 @@ export async function completeGitHubAuthorization(userId:string,state:string,cod
   const token=await exchangeCode(code);
   const installations=await userInstallations(token);
   if(!installations.length) throw new Error("No verified GitHub App installation is available for this user.");
-  const selected=callbackInstallationId&&installations.some(i=>i.id===callbackInstallationId)?callbackInstallationId:(installations.length===1?installations[0].id:null);
+  if(callbackInstallationId&&!installations.some(i=>i.id===callbackInstallationId)) throw new Error("GitHub installation is not associated with the authorized user.");
+  const selected=callbackInstallationId||(installations.length===1?installations[0].id:null);
   await p.githubAuthorizationState.update({where:{id:record.id},data:{consumedAt:new Date(),installationId:selected,availableInstallations:installations}});
   store.set(STATE_COOKIE,record.id,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:600});
   return {selectedInstallationId:selected,installations};
