@@ -6,7 +6,6 @@ import { isGitHubAppConfigured, listInstallationRepositories } from "@/services/
 
 const STATE_TTL_MS=10*60*1000;
 const STATE_COOKIE="aop_github_authorization";
-const PKCE_COOKIE="aop_github_pkce";
 
 function hash(value:string){return createHash("sha256").update(value).digest("hex");}
 function b64url(value:Buffer){return value.toString("base64url");}
@@ -24,20 +23,16 @@ export function isGitHubAuthorizationConfigured(){return Boolean(process.env.GIT
 export async function startGitHubAuthorization(userId:string){
   const {clientId,slug,callback}=config();
   const state=b64url(randomBytes(32));
-  const verifier=b64url(randomBytes(48));
-  const challenge=b64url(createHash("sha256").update(verifier).digest());
   const p=getPrisma();
   await p.githubAuthorizationState.deleteMany({where:{userId,expiresAt:{lt:new Date()}}});
   await p.githubAuthorizationState.create({data:{userId,stateHash:hash(state),expiresAt:new Date(Date.now()+STATE_TTL_MS)}});
   const url=new URL("https://github.com/apps/"+encodeURIComponent(slug)+"/installations/new");
   url.searchParams.set("state",state);
-  const store=await cookies();
-  store.set(PKCE_COOKIE,verifier,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:600});
-  return {url:url.toString(),challenge,callback,clientId};
+  return {url:url.toString(),callback,clientId};
 }
-async function exchangeCode(code:string,verifier:string){
+async function exchangeCode(code:string){
   const {clientId,clientSecret,callback}=config();
-  const res=await fetch("https://github.com/login/oauth/access_token",{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({client_id:clientId,client_secret:clientSecret,code,redirect_uri:callback,code_verifier:verifier}),signal:AbortSignal.timeout(10000)});
+  const res=await fetch("https://github.com/login/oauth/access_token",{method:"POST",headers:{"Accept":"application/json","Content-Type":"application/json"},body:JSON.stringify({client_id:clientId,client_secret:clientSecret,code,redirect_uri:callback}),signal:AbortSignal.timeout(10000)});
   if(!res.ok) throw new Error("GitHub authorization exchange failed.");
   const data=await res.json() as {access_token?:string;error?:string};
   if(!data.access_token) throw new Error("GitHub authorization was not completed.");
@@ -49,22 +44,18 @@ async function userInstallations(token:string){
   const data=await res.json() as {installations?:Array<any>};
   return (data.installations||[]).map(i=>({id:String(i.id),account:String(i.account?.login||""),permissions:i.permissions||{},repositorySelection:String(i.repository_selection||"unknown")})).filter(i=>/^\d+$/.test(i.id));
 }
-export async function completeGitHubAuthorization(userId:string,state:string,code:string){
+export async function completeGitHubAuthorization(userId:string,state:string,code:string,callbackInstallationId?:string){
   if(!state||!code) throw new Error("GitHub authorization callback is incomplete.");
   const p=getPrisma();
   const record=await p.githubAuthorizationState.findFirst({where:{userId,stateHash:hash(state),consumedAt:null}});
   if(!record||record.expiresAt<=new Date()) throw new Error("GitHub authorization state is invalid or expired.");
   const store=await cookies();
-  const verifier=store.get(PKCE_COOKIE)?.value;
-  if(!verifier) throw new Error("GitHub authorization session is incomplete.");
-  const token=await exchangeCode(code,verifier);
+  const token=await exchangeCode(code);
   const installations=await userInstallations(token);
   if(!installations.length) throw new Error("No verified GitHub App installation is available for this user.");
-  const installationIdFromCallback=new URLSearchParams(typeof state==="string"?"":"").get("installation_id");
-  const selected=installationIdFromCallback&&installations.some(i=>i.id===installationIdFromCallback)?installationIdFromCallback:(installations.length===1?installations[0].id:null);
+  const selected=callbackInstallationId&&installations.some(i=>i.id===callbackInstallationId)?callbackInstallationId:(installations.length===1?installations[0].id:null);
   await p.githubAuthorizationState.update({where:{id:record.id},data:{consumedAt:new Date(),installationId:selected,availableInstallations:installations}});
   store.set(STATE_COOKIE,record.id,{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:600});
-  store.set(PKCE_COOKIE,"",{httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"lax",path:"/",maxAge:0});
   return {selectedInstallationId:selected,installations};
 }
 export async function getAuthorizationContext(userId:string){
