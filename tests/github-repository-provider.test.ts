@@ -1,7 +1,7 @@
 import {describe,it,expect,afterEach} from "vitest";
 import {GitHubRepositoryProvider} from "@/services/github-repository-provider";
 const originalFetch=globalThis.fetch;
-afterEach(()=>{globalThis.fetch=originalFetch;delete process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED;delete process.env.GITHUB_TOKEN;delete process.env.GITHUB_ALLOWED_REPOSITORIES;});
+afterEach(()=>{globalThis.fetch=originalFetch;delete process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED;delete process.env.GITHUB_TOKEN;delete process.env.GITHUB_ALLOWED_REPOSITORIES;delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;});
 describe("GitHub repository provider security",()=>{
  it("rejects arbitrary repositories when the application allowlist does not include them",async()=>{
   process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_TOKEN="test";process.env.GITHUB_ALLOWED_REPOSITORIES="allowed/repo";
@@ -22,7 +22,7 @@ describe("GitHub repository provider security",()=>{
   await expect(new GitHubRepositoryProvider().validateRepository("owner/repo")).rejects.toThrow("not securely configured");
  });
  it("creates only server-shaped repair branches",async()=>{
-  process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_TOKEN="test";process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";
+  process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_TOKEN="test";process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";process.env.GITHUB_REPAIR_EXECUTION_ENABLED="true";
   let calls=0;globalThis.fetch=async(_input,init)=>{calls++;if(calls===1)return new Response(JSON.stringify({object:{sha:"abc"}}),{status:200});return new Response(JSON.stringify({ref:"refs/heads/repair/ex1"}),{status:201});};
   await expect(new GitHubRepositoryProvider().createBranch("owner/repo","repair/ex1","main")).resolves.toEqual({ref:"refs/heads/repair/ex1"});
   await expect(new GitHubRepositoryProvider().createBranch("owner/repo","main","main")).rejects.toThrow("Unsafe repair branch.");
