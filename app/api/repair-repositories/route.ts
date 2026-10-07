@@ -26,7 +26,7 @@ export async function POST(req:Request){
   const r=await p.authorizedRepository.create({data:{
    userId:u.id,name:parsed.data.name,provider:"GITHUB",repositoryIdentifier:meta.fullName,
    repositoryOwner:meta.owner,repositoryName:meta.name,workspaceRef:parsed.data.workspaceRef,
-   defaultBranch:meta.defaultBranch,allowedBranches:[],authorizationStatus:"ACTIVE",grantedScopes:JSON.stringify(["repo:read","repair-branch:write"]),status:"ACTIVE"
+   defaultBranch:meta.defaultBranch,allowedBranches:[],authorizationStatus:"ACTIVE",grantedScopes:["repo:read","repair-branch:write"],status:"ACTIVE"
   }});
   return NextResponse.json({repository:{id:r.id,name:r.name,provider:r.provider,repositoryIdentifier:r.repositoryIdentifier,repositoryOwner:r.repositoryOwner,repositoryName:r.repositoryName,defaultBranch:r.defaultBranch,authorizationStatus:r.authorizationStatus,createdAt:r.createdAt,updatedAt:r.updatedAt}},{status:201});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to authorize repository."},{status:400});}
