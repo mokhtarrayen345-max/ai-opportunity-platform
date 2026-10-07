@@ -1,0 +1,2 @@
+import{redirect}from"next/navigation";import{getCurrentUser}from"@/lib/auth";import{RepairPlansPanel}from"@/components/repair-plans-panel";
+export default async function RepairPlans(){if(!await getCurrentUser())redirect("/auth");return <div className="container page"><p className="eyebrow">AI Repair Planning V1</p><h1>Turn verified diagnosis findings into a repair plan.</h1><p className="lead narrow">Planning only — no changes have been made to the target system. Every step is grounded in diagnosis findings and remains subject to human review.</p><RepairPlansPanel/></div>}
