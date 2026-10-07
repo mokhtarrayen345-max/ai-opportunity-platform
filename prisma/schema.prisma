@@ -502,7 +502,7 @@ model RepairTestResult {
   startedAt DateTime
   completedAt DateTime?
   execution RepairExecution @relation(fields:[executionId],references:[id],onDelete:Cascade)
-  @@index([executionId,createdAt])
+  @@index([executionId,startedAt])
   @@index([executionId,status])
 }
 
