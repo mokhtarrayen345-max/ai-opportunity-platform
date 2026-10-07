@@ -1,0 +1,4 @@
+import "server-only";import {z} from "zod";import type {RepairPlanDraft} from "@/services/repair-planning-domain";
+export const codingOutputSchema=z.object({changes:z.array(z.object({filePath:z.string().min(1).max(500),changeType:z.enum(["ADDED","MODIFIED","RENAMED"]),reason:z.string().min(1).max(1000),content:z.string().max(200000)})).max(20)});
+export type CodingOutput=z.infer<typeof codingOutputSchema>;export interface CodingProvider{generate(plan:RepairPlanDraft,files:Array<{path:string;content:string}>):Promise<CodingOutput>}
+export class MockCodingProvider implements CodingProvider{async generate(){return{changes:[]}}}
