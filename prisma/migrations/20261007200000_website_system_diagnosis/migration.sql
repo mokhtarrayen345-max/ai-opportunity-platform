@@ -1,0 +1,16 @@
+CREATE TABLE "DiagnosisTarget" ("id" TEXT NOT NULL,"userId" TEXT NOT NULL,"url" TEXT NOT NULL,"targetType" TEXT NOT NULL,"hostname" TEXT NOT NULL,"protocol" TEXT NOT NULL,"normalizedUrl" TEXT NOT NULL,"displayName" TEXT,"healthEndpoint" TEXT,"apiEndpoint" TEXT,"enabled" BOOLEAN NOT NULL DEFAULT true,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "DiagnosisTarget_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "DiagnosisRun" ("id" TEXT NOT NULL,"userId" TEXT NOT NULL,"targetId" TEXT NOT NULL,"status" TEXT NOT NULL,"overallStatus" TEXT,"startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"completedAt" TIMESTAMP(3),"totalFindings" INTEGER NOT NULL DEFAULT 0,"checksPerformed" JSONB NOT NULL,"checksSkipped" JSONB NOT NULL,"report" JSONB NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "DiagnosisRun_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "DiagnosticFinding" ("id" TEXT NOT NULL,"userId" TEXT NOT NULL,"targetId" TEXT NOT NULL,"runId" TEXT NOT NULL,"category" TEXT NOT NULL,"title" TEXT NOT NULL,"description" TEXT NOT NULL,"severity" TEXT NOT NULL,"status" TEXT NOT NULL,"observedValue" TEXT,"expectedValue" TEXT,"evidence" JSONB NOT NULL,"rootCauseHypothesis" TEXT,"confidence" INTEGER NOT NULL,"facts" JSONB NOT NULL,"hypotheses" JSONB NOT NULL,"unknowns" JSONB NOT NULL,"recommendation" TEXT NOT NULL,"estimatedEffortMinutes" INTEGER NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "DiagnosticFinding_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "DiagnosisTarget_userId_normalizedUrl_key" ON "DiagnosisTarget"("userId","normalizedUrl");
+CREATE INDEX "DiagnosisTarget_userId_createdAt_idx" ON "DiagnosisTarget"("userId","createdAt");
+CREATE INDEX "DiagnosisRun_userId_createdAt_idx" ON "DiagnosisRun"("userId","createdAt");
+CREATE INDEX "DiagnosisRun_userId_targetId_idx" ON "DiagnosisRun"("userId","targetId");
+CREATE INDEX "DiagnosticFinding_userId_runId_idx" ON "DiagnosticFinding"("userId","runId");
+CREATE INDEX "DiagnosticFinding_userId_targetId_idx" ON "DiagnosticFinding"("userId","targetId");
+CREATE INDEX "DiagnosticFinding_userId_severity_idx" ON "DiagnosticFinding"("userId","severity");
+ALTER TABLE "DiagnosisTarget" ADD CONSTRAINT "DiagnosisTarget_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "DiagnosisRun" ADD CONSTRAINT "DiagnosisRun_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "DiagnosisRun" ADD CONSTRAINT "DiagnosisRun_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "DiagnosisTarget"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "DiagnosticFinding" ADD CONSTRAINT "DiagnosticFinding_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "DiagnosticFinding" ADD CONSTRAINT "DiagnosticFinding_targetId_fkey" FOREIGN KEY ("targetId") REFERENCES "DiagnosisTarget"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "DiagnosticFinding" ADD CONSTRAINT "DiagnosticFinding_runId_fkey" FOREIGN KEY ("runId") REFERENCES "DiagnosisRun"("id") ON DELETE CASCADE ON UPDATE CASCADE;
