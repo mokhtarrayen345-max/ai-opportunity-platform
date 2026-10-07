@@ -3,9 +3,10 @@ const app=vi.hoisted(()=>({configured:vi.fn(),token:vi.fn()}));
 vi.mock("@/services/github-app-client",()=>({isGitHubAppConfigured:app.configured,createInstallationToken:app.token}));
 import{GitHubRepositoryProvider}from"@/services/github-repository-provider";
 
+const originalFetch=globalThis.fetch;
 describe("GitHub repository provider with App authorization",()=>{
  beforeEach(()=>{vi.clearAllMocks();process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";process.env.GITHUB_REPAIR_EXECUTION_ENABLED="false";app.configured.mockReturnValue(true);app.token.mockResolvedValue({token:"installation-secret",expires_at:"2099-01-01T00:00:00Z",permissions:{metadata:"read",contents:"write"}});});
- afterEach(()=>{delete process.env.GITHUB_ALLOWED_REPOSITORIES;delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;});
+ afterEach(()=>{globalThis.fetch=originalFetch;delete process.env.GITHUB_ALLOWED_REPOSITORIES;delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;});
  it("rejects an unauthorized repository record",async()=>{const p=new GitHubRepositoryProvider();await expect(p.validateAuthorizedRepository({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"REVOKED",status:"REVOKED"})).rejects.toThrow("not active");});
  it("rejects missing App configuration",async()=>{app.configured.mockReturnValue(false);const p=new GitHubRepositoryProvider();await expect(p.validateAuthorizedRepository({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"AUTHORIZED",status:"ACTIVE"})).rejects.toThrow("configuration is missing");});
  it("verifies repository identity with a scoped installation token",async()=>{globalThis.fetch=vi.fn(async()=>new Response(JSON.stringify({id:1,full_name:"owner/repo",default_branch:"main",private:true}),{status:200}));const p=new GitHubRepositoryProvider();const result=await p.validateAuthorizedRepository({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"AUTHORIZED",status:"ACTIVE"});expect(result.repositoryId).toBe("1");expect(app.token).toHaveBeenCalledWith("2","1");expect(String((globalThis.fetch as any).mock.calls[0][1].headers.Authorization)).toContain("installation-secret");});
