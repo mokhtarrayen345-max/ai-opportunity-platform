@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {getCurrentUser} from "@/lib/auth";import {getRepairPlan} from "@/services/repair-planning";
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){const u=await getCurrentUser();if(!u)return NextResponse.json({error:"Authentication required."},{status:401});const p=await getRepairPlan(u.id,(await params).id);if(!p)return NextResponse.json({error:"Repair plan not found."},{status:404});return NextResponse.json({plan:p});}
