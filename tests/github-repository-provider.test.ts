@@ -1,30 +1,13 @@
-import {describe,it,expect,afterEach} from "vitest";
-import {GitHubRepositoryProvider} from "@/services/github-repository-provider";
-const originalFetch=globalThis.fetch;
-afterEach(()=>{globalThis.fetch=originalFetch;delete process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED;delete process.env.GITHUB_TOKEN;delete process.env.GITHUB_ALLOWED_REPOSITORIES;delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;});
-describe("GitHub repository provider security",()=>{
- it("rejects arbitrary repositories when the application allowlist does not include them",async()=>{
-  process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_TOKEN="test";process.env.GITHUB_ALLOWED_REPOSITORIES="allowed/repo";
-  await expect(new GitHubRepositoryProvider().validateRepository("other/repo")).rejects.toThrow("not authorized");
- });
- it("validates a configured repository without exposing credentials",async()=>{
-  process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_TOKEN="test";process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";
-  globalThis.fetch=async()=>new Response(JSON.stringify({full_name:"owner/repo",default_branch:"main",private:true}),{status:200});
-  const result=await new GitHubRepositoryProvider().validateRepository("owner/repo");
-  expect(result).toEqual({owner:"owner",name:"repo",fullName:"owner/repo",defaultBranch:"main",private:true});
- });
- it("rejects malformed identifiers",async()=>{
-  process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_TOKEN="test";process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";
-  await expect(new GitHubRepositoryProvider().validateRepository("https://github.com/owner/repo")).rejects.toThrow();
- });
- it("fails closed when runtime credentials are unavailable",async()=>{
-  process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";
-  await expect(new GitHubRepositoryProvider().validateRepository("owner/repo")).rejects.toThrow("not securely configured");
- });
- it("creates only server-shaped repair branches",async()=>{
-  process.env.GITHUB_REPOSITORY_PROVIDER_ENABLED="true";process.env.GITHUB_TOKEN="test";process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";process.env.GITHUB_REPAIR_EXECUTION_ENABLED="true";
-  let calls=0;globalThis.fetch=async(_input,init)=>{calls++;if(calls===1)return new Response(JSON.stringify({object:{sha:"abc"}}),{status:200});return new Response(JSON.stringify({ref:"refs/heads/repair/ex1"}),{status:201});};
-  await expect(new GitHubRepositoryProvider().createBranch("owner/repo","repair/ex1","main")).resolves.toEqual({ref:"refs/heads/repair/ex1"});
-  await expect(new GitHubRepositoryProvider().createBranch("owner/repo","main","main")).rejects.toThrow("Unsafe repair branch.");
- });
+import{describe,it,expect,vi,beforeEach,afterEach}from"vitest";
+const app=vi.hoisted(()=>({configured:vi.fn(),token:vi.fn()}));
+vi.mock("@/services/github-app-client",()=>({isGitHubAppConfigured:app.configured,createInstallationToken:app.token}));
+import{GitHubRepositoryProvider}from"@/services/github-repository-provider";
+
+describe("GitHub repository provider with App authorization",()=>{
+ beforeEach(()=>{vi.clearAllMocks();process.env.GITHUB_ALLOWED_REPOSITORIES="owner/repo";process.env.GITHUB_REPAIR_EXECUTION_ENABLED="false";app.configured.mockReturnValue(true);app.token.mockResolvedValue({token:"installation-secret",expires_at:"2099-01-01T00:00:00Z",permissions:{metadata:"read",contents:"write"}});});
+ afterEach(()=>{delete process.env.GITHUB_ALLOWED_REPOSITORIES;delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;});
+ it("rejects an unauthorized repository record",async()=>{const p=new GitHubRepositoryProvider();await expect(p.validateAuthorizedRepository({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"REVOKED",status:"REVOKED"})).rejects.toThrow("not active");});
+ it("rejects missing App configuration",async()=>{app.configured.mockReturnValue(false);const p=new GitHubRepositoryProvider();await expect(p.validateAuthorizedRepository({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"AUTHORIZED",status:"ACTIVE"})).rejects.toThrow("configuration is missing");});
+ it("verifies repository identity with a scoped installation token",async()=>{globalThis.fetch=vi.fn(async()=>new Response(JSON.stringify({id:1,full_name:"owner/repo",default_branch:"main",private:true}),{status:200}));const p=new GitHubRepositoryProvider();const result=await p.validateAuthorizedRepository({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"AUTHORIZED",status:"ACTIVE"});expect(result.repositoryId).toBe("1");expect(app.token).toHaveBeenCalledWith("2","1");expect(String((globalThis.fetch as any).mock.calls[0][1].headers.Authorization)).toContain("installation-secret");});
+ it("never enables writes by authorization alone",async()=>{const p=new GitHubRepositoryProvider();await expect(p.createBranch({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"AUTHORIZED",status:"ACTIVE"},"repair/ex1")).rejects.toThrow("disabled by default");});
 });
