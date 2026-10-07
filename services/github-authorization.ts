@@ -1,13 +1,12 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { getPrisma } from "@/lib/db";
 import { isGitHubAppConfigured, listInstallationRepositories } from "@/services/github-app-client";
+import { createAuthorizationState, validateAuthorizationState } from "@/services/github-authorization-state";
 
-const STATE_TTL_MS=10*60*1000;
 const STATE_COOKIE="aop_github_authorization";
 
-function hash(value:string){return createHash("sha256").update(value).digest("hex");}
 function b64url(value:Buffer){return value.toString("base64url");}
 function config(){
   const clientId=process.env.GITHUB_APP_CLIENT_ID;
@@ -22,10 +21,11 @@ function config(){
 export function isGitHubAuthorizationConfigured(){return Boolean(process.env.GITHUB_APP_CLIENT_ID&&process.env.GITHUB_APP_CLIENT_SECRET&&process.env.GITHUB_APP_SLUG&&process.env.GITHUB_APP_CALLBACK_URL);}
 export async function startGitHubAuthorization(userId:string){
   const {clientId,slug,callback}=config();
-  const state=b64url(randomBytes(32));
+  const generated=createAuthorizationState();
+  const state=generated.raw;
   const p=getPrisma();
   await p.githubAuthorizationState.deleteMany({where:{userId,expiresAt:{lt:new Date()}}});
-  await p.githubAuthorizationState.create({data:{userId,stateHash:hash(state),expiresAt:new Date(Date.now()+STATE_TTL_MS)}});
+  await p.githubAuthorizationState.create({data:{userId,stateHash:generated.stateHash,expiresAt:generated.expiresAt}});
   const url=new URL("https://github.com/apps/"+encodeURIComponent(slug)+"/installations/new");
   url.searchParams.set("state",state);
   return {url:url.toString(),callback,clientId};
@@ -47,8 +47,8 @@ async function userInstallations(token:string){
 export async function completeGitHubAuthorization(userId:string,state:string,code:string,callbackInstallationId?:string){
   if(!state||!code) throw new Error("GitHub authorization callback is incomplete.");
   const p=getPrisma();
-  const record=await p.githubAuthorizationState.findFirst({where:{userId,stateHash:hash(state),consumedAt:null}});
-  if(!record||record.expiresAt<=new Date()) throw new Error("GitHub authorization state is invalid or expired.");
+  const record=await p.githubAuthorizationState.findFirst({where:{userId,consumedAt:null}});
+  if(!record||!validateAuthorizationState(record,userId,state)) throw new Error("GitHub authorization state is invalid or expired.");
   const store=await cookies();
   const token=await exchangeCode(code);
   const installations=await userInstallations(token);
