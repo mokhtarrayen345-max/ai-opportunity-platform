@@ -382,6 +382,7 @@ model RepairPlan {
   user User @relation(fields:[userId],references:[id],onDelete:Cascade)
   diagnosisRun DiagnosisRun @relation(fields:[diagnosisRunId],references:[id],onDelete:Cascade)
   steps RepairStep[]
+  repairExecutions RepairExecution[]
   @@index([userId,createdAt])
   @@index([userId,diagnosisRunId])
   @@index([userId,status])
