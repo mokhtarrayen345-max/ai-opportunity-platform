@@ -18,7 +18,7 @@ export async function createRepairPlan(userId:string,diagnosisRunId:string,plann
    userId,diagnosisRunId,title:safe.title,summary:safe.summary,status:"READY_FOR_REVIEW",overallRisk:safe.overallRisk,
    estimatedEffortMinutes:safe.estimatedEffortMinutes,estimatedEffortRange:effortRange(safe.estimatedEffortMinutes),confidence:safe.confidence,
    facts:safe.facts,hypotheses:safe.hypotheses,assumptions:safe.assumptions,unknowns:safe.unknowns,limitations:safe.limitations,
-   requiresApproval:safe.steps.some(s=>s.requiresApproval),approvalStatus:"PENDING",
+   requiresApproval:true,approvalStatus:"PENDING",
    steps:{create:safe.steps.map((s,i)=>({
     order:i+1,title:s.title,description:s.description,objective:s.objective,category:s.category,affectedArea:s.affectedArea,
     dependencies:s.dependencies,evidence:{findingIds:s.evidenceFindingIds},risk:s.risk,estimatedEffortMinutes:s.estimatedEffortMinutes,
