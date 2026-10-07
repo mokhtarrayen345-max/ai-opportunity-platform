@@ -36,9 +36,9 @@ export async function verifyInstallation(installationId:string){
   const res=await githubFetch("/app/installations/"+encodeURIComponent(installationId),{headers:{Authorization:"Bearer "+createGitHubAppJwt()}});
   return await res.json() as {id:number;account?:{login?:string};permissions?:Record<string,string>;repository_selection?:string;suspended_at?:string|null};
 }
-export async function createInstallationToken(installationId:string,repositoryId?:string){
+export async function createInstallationToken(installationId:string,repositoryId?:string,write=false){
   if(!/^\d+$/.test(installationId)) throw new Error("Invalid GitHub installation.");
-  const body=repositoryId?JSON.stringify({repository_ids:[Number(repositoryId)],permissions:{metadata:"read",contents:"write"}}):JSON.stringify({permissions:{metadata:"read"}});
+  const body=repositoryId?JSON.stringify({repository_ids:[Number(repositoryId)],permissions:write?{metadata:"read",contents:"write"}:{metadata:"read"}}):JSON.stringify({permissions:{metadata:"read"}});
   const res=await githubFetch("/app/installations/"+encodeURIComponent(installationId)+"/access_tokens",{method:"POST",headers:{Authorization:"Bearer "+createGitHubAppJwt(),"Content-Type":"application/json"},body});
   return await res.json() as {token:string;expires_at:string;permissions?:Record<string,string>};
 }
