@@ -1,9 +1,7 @@
 import "server-only";
+import {githubHealthCheck} from "@/services/github-issues-provider";
 export type ProviderHealth={ok:boolean;error?:string};
 export interface SourceProvider{readonly sourceId:string;readonly type:string;healthCheck():Promise<ProviderHealth>;}
-export class MockSourceProvider implements SourceProvider{readonly type="mock";constructor(public readonly sourceId:string,private readonly shouldFail=false,private readonly delayMs=0){}async healthCheck(){if(this.delayMs>0)await new Promise(r=>setTimeout(r,this.delayMs));if(this.shouldFail)return {ok:false,error:"Mock provider health check failed."};return {ok:true};}}
-export function resolveSourceProvider(source:{id:string;type:string;config:unknown}):SourceProvider{
- const config=source.config&&typeof source.config==="object"&&!Array.isArray(source.config)?source.config as Record<string,unknown>:{};
- if(source.type==="mock"||source.type==="internal")return new MockSourceProvider(source.id,config.failHealth===true,typeof config.delayMs==="number"?config.delayMs:0);
- throw new Error("No provider registered for this source type.");
-}
+export class MockSourceProvider implements SourceProvider{readonly type="mock";constructor(public readonly sourceId:string,private readonly shouldFail=false,private readonly delayMs=0){}async healthCheck(){if(this.delayMs>0)await new Promise(r=>setTimeout(r,r));if(this.shouldFail)return {ok:false,error:"Mock provider health check failed."};return {ok:true};}}
+export class GitHubIssuesSourceProvider implements SourceProvider{readonly type="github";constructor(public readonly sourceId:string,private readonly config:unknown){}async healthCheck(){return githubHealthCheck(this.config);}}
+export function resolveSourceProvider(source:{id:string;type:string;config:unknown}):SourceProvider{const config=source.config&&typeof source.config==="object"&&!Array.isArray(source.config)?source.config as Record<string,unknown>:{};if(source.type==="mock"||source.type==="internal")return new MockSourceProvider(source.id,config.failHealth===true,typeof config.delayMs==="number"?config.delayMs:0);if(source.type==="github")return new GitHubIssuesSourceProvider(source.id,config);throw new Error("No provider registered for this source type.");}
