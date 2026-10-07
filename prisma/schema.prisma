@@ -426,10 +426,16 @@ model AuthorizedRepository {
   id String @id @default(cuid())
   userId String
   name String
+  provider String @default("LOCAL")
   repositoryIdentifier String
+  repositoryOwner String?
+  repositoryName String?
   workspaceRef String @unique
   defaultBranch String @default("main")
   allowedBranches Json
+  authorizationStatus String @default("ACTIVE")
+  grantedScopes Json
+  revokedAt DateTime?
   status String @default("ACTIVE")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -437,6 +443,8 @@ model AuthorizedRepository {
   executions RepairExecution[]
   @@index([userId,createdAt])
   @@index([userId,status])
+  @@index([userId,provider,authorizationStatus])
+  @@unique([userId,provider,repositoryIdentifier])
 }
 
 model RepairExecution {
