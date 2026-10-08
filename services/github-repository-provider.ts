@@ -43,7 +43,7 @@ function runProcess(command:string,args:string[],cwd:string,env:NodeJS.ProcessEn
 }
 async function withAskPass<T>(token:string,fn:(env:NodeJS.ProcessEnv)=>Promise<T>){
   const dir=await mkdtemp(join(tmpdir(),"aop-git-auth-"));const script=join(dir,process.platform==="win32"?"askpass.cmd":"askpass.sh");
-  const content=process.platform==="win32"?"@echo off\r\necho %AOP_GIT_TOKEN%\r\n":"#!/bin/sh\nprintf '%s\\n' \"$AOP_GIT_TOKEN\"\n";
+  const content=process.platform==="win32"?"@echo off\r\nset \"PROMPT=%~1\"\r\nif /I not \"%PROMPT:Username=%\"==\"%PROMPT%\" (echo x-access-token) else (echo %AOP_GIT_TOKEN%)\r\n":"#!/bin/sh\ncase \"$1\" in *Username*) printf '%s\\n' \"x-access-token\" ;; *) printf '%s\\n' \"$AOP_GIT_TOKEN\" ;; esac\n";
   await writeFile(script,content,{encoding:"utf8",mode:0o700});if(process.platform!=="win32")await chmod(script,0o700);
   try{return await fn({...process.env,GIT_ASKPASS:script,GIT_TERMINAL_PROMPT:"0",AOP_GIT_TOKEN:token})}
   finally{await rm(dir,{recursive:true,force:true}).catch(()=>{})}
