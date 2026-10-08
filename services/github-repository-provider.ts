@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
 import { safeWorkspacePath } from "@/services/repair-execution-domain";
+import { assertWorkspaceRoot, assertWorkspacePath } from "@/services/repair-workspace";
 import { createInstallationToken, isGitHubAppConfigured } from "@/services/github-app-client";
 
 const API="https://api.github.com";
@@ -76,7 +77,7 @@ export class GitHubRepositoryProvider{
   async createWorkspace(repo:AuthorizedRepo,executionId:string,branch:string){
     if(process.env.GITHUB_REPAIR_EXECUTION_ENABLED!=="true")throw new Error("GitHub repair write execution is disabled by default.");
     const meta=await this.validateAuthorizedRepository(repo);if(!safeBranch.test(branch)||protectedBranches.has(branch)||branch===meta.defaultBranch)throw new Error("Unsafe repair branch.");
-    const token=await createInstallationToken(repo.installationId!,repo.githubRepositoryId!,true);const root=await mkdtemp(join(tmpdir(),"aop-github-repair-"));
+    const token=await createInstallationToken(repo.installationId!,repo.githubRepositoryId!,true);const root=await mkdtemp(join(tmpdir(),"aop-repair-authorized-github-"));
     try{await withAskPass(token.token,async env=>{const remote=`https://github.com/${meta.owner}/${meta.name}.git`;const r=await runProcess("git",["clone","--depth","1","--branch",branch,remote,root],root,env,180000);if(r.code!==0)throw new Error("GitHub repository checkout failed.");});await writeFile(join(root,".aop-workspace.json"),JSON.stringify({provider:"GITHUB",repository:meta.fullName,branch,executionId}),"utf8");return{workspaceId:executionId,root,branch,repository:meta.fullName,defaultBranch:meta.defaultBranch};}
     catch(error){await rm(root,{recursive:true,force:true}).catch(()=>{});throw error;}
     finally{try{await githubFetch("/installation/token",token.token,{method:"DELETE"});}catch{}}
@@ -93,6 +94,6 @@ export class GitHubRepositoryProvider{
     finally{try{await githubFetch("/installation/token",token.token,{method:"DELETE"});}catch{}}
     const sha=await runProcess("git",["rev-parse","HEAD"],root,{...process.env,GIT_TERMINAL_PROMPT:"0"},30000);if(sha.code!==0)throw new Error("Unable to resolve repair commit.");return sha.stdout.trim();
   }
-  async cleanupWorkspace(root:string){await rm(root,{recursive:true,force:true});}
+  async cleanupWorkspace(root:string){await rm(assertWorkspaceRoot(root),{recursive:true,force:true});}
   safePath(root:string,path:string){return safeWorkspacePath(root,path);}
 }
