@@ -6,17 +6,18 @@ import { transitionExecution } from "@/services/repair-execution-state-machine";
 import { GitHubRepositoryProvider } from "@/services/github-repository-provider";
 import { scanSecretContent } from "@/services/repair-secret-scanner";
 import { validateCommand } from "@/services/repair-execution-domain";
+import { isSafeVerificationRepository } from "@/services/controlled-github-verification-config";
 const resultSchema=z.object({status:z.enum(["DISABLED","UNAUTHORIZED","NOT_CONFIGURED","REJECTED","FAILED","SUCCEEDED"]),executionId:z.string().nullable(),message:z.string()});
 export type ControlledVerificationResult=z.infer<typeof resultSchema>;
 const enabled=()=>process.env.GITHUB_CONTROLLED_VERIFICATION_ENABLED==="true";
 const configuredRepo=()=>process.env.GITHUB_CONTROLLED_VERIFICATION_REPOSITORY?.trim()||null;
 const repoAllowed=(repo:string)=>new Set((process.env.GITHUB_ALLOWED_REPOSITORIES||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean)).has(repo.toLowerCase());
 export function controlledVerificationConfig(){return{enabled:enabled(),repository:configuredRepo()};}
-export function verificationBranch(executionId:string){const branch="github-verification/"+executionId;return /^github-verification\/[A-Za-z0-9_-]+$/.test(branch)?branch:null;}
+export function verificationBranch(executionId:string){if(!/^[A-Za-z0-9_-]+$/.test(executionId))return null;const branch="github-verification/"+executionId;return !["main","master","production","prod"].includes(branch.toLowerCase())&&/^github-verification\/[A-Za-z0-9_-]+$/.test(branch)?branch:null;}
 export function verifyClientPayload(body:unknown){return z.object({}).strict().safeParse(body).success;}
 export async function runControlledVerification(userId:string,provider?:Pick<GitHubRepositoryProvider,"validateAuthorizedRepository">):Promise<ControlledVerificationResult>{
 if(!enabled())return{status:"DISABLED",executionId:null,message:"Controlled GitHub verification is disabled."};
-const target=configuredRepo();if(!target)return{status:"NOT_CONFIGURED",executionId:null,message:"Controlled verification repository is not configured."};
+const target=configuredRepo();if(!target)return{status:"NOT_CONFIGURED",executionId:null,message:"Controlled verification repository is not configured."};if(!isSafeVerificationRepository(target))return{status:"REJECTED",executionId:null,message:"Controlled verification repository configuration is unsafe."};
 if(!repoAllowed(target))return{status:"REJECTED",executionId:null,message:"Controlled verification repository is not allowlisted."};
 const p=getPrisma();const repo=await p.authorizedRepository.findFirst({where:{userId,provider:"GITHUB",status:"ACTIVE",authorizationStatus:"AUTHORIZED",repositoryIdentifier:target},orderBy:{createdAt:"desc"}});
 if(!repo)return{status:"UNAUTHORIZED",executionId:null,message:"No active authorized GitHub installation matches the configured verification repository."};
