@@ -1,0 +1,13 @@
+import{describe,it,expect}from"vitest";
+import{codingOutputSchema,MockCodingProvider}from"@/services/repair-coding";
+import{GitHubRepositoryProvider}from"@/services/github-repository-provider";
+import{safeWorkspacePath,validateCommand}from"@/services/repair-execution-domain";
+describe("real GitHub repair execution safety contracts",()=>{
+ it("requires a repair-step reference for every coding change",()=>{expect(codingOutputSchema.safeParse({changes:[{filePath:"src/a.ts",changeType:"MODIFIED",reason:"x",content:"y"}]}).success).toBe(false)});
+ it("accepts a structured coding change with a valid step",()=>{expect(codingOutputSchema.safeParse({changes:[{repairStepId:"step-1",filePath:"src/a.ts",changeType:"MODIFIED",reason:"approved repair",content:"export const ok=true;"}]}).success).toBe(true)});
+ it("mock coding provider is deterministic and produces no real changes",async()=>{expect(await new MockCodingProvider().generate({} as any,[])).toEqual({changes:[]})});
+ it("real GitHub writes fail closed when the feature flag is false",async()=>{const old=process.env.GITHUB_REPAIR_EXECUTION_ENABLED;delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;try{const p=new GitHubRepositoryProvider();await expect(p.createBranch({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"AUTHORIZED",status:"ACTIVE"},"repair/ex1")).rejects.toThrow("disabled by default")}finally{if(old===undefined)delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;else process.env.GITHUB_REPAIR_EXECUTION_ENABLED=old}});
+ it("protected/default branches are rejected even when writes are enabled",async()=>{const old=process.env.GITHUB_REPAIR_EXECUTION_ENABLED;process.env.GITHUB_REPAIR_EXECUTION_ENABLED="true";try{const p=new GitHubRepositoryProvider();await expect(p.createBranch({repositoryIdentifier:"owner/repo",githubRepositoryId:"1",installationId:"2",authorizationStatus:"AUTHORIZED",status:"ACTIVE"},"main")).rejects.toThrow("Unsafe repair branch")}finally{if(old===undefined)delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;else process.env.GITHUB_REPAIR_EXECUTION_ENABLED=old}});
+ it("workspace policy rejects credential and traversal paths",()=>{expect(()=>safeWorkspacePath("/tmp/ws",".env.production")).toThrow();expect(()=>safeWorkspacePath("/tmp/ws","../secret")).toThrow();expect(()=>safeWorkspacePath("/tmp/ws","src/fix.ts")).not.toThrow()});
+ it("command policy rejects shell metacharacters",()=>{expect(validateCommand({name:"npm test",args:[]})).toBeUndefined();expect(()=>validateCommand({name:"npm test",args:["&&","whoami"]})).toThrow()});
+});
