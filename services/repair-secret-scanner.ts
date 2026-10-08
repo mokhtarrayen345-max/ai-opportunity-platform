@@ -1,7 +1,7 @@
 const rules=[
 {name:"private-key",re:/-----BEGIN (?:RSA |EC |OPENSSH |DSA |ED25519 )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH |DSA |ED25519 )?PRIVATE KEY-----/i},
 {name:"github-token",re:/(?:gh[pousr]|github_pat)_[A-Za-z0-9_]{20,}/i},
-{name:"generic-api-key",re:/\b(?:sk|rk|pk|api|key|token|secret)[_-]?[A-Za-z0-9]{20,}\b/i},
+{name:"generic-api-key",re:/\b(?:sk|rk|pk|api|key|token|secret)[_-]?[A-Za-z0-9]{20,}\b/i},{name:"assigned-api-key",re:/\b(?:api[_-]?key|secret[_-]?key|access[_-]?key)\s*[:=]\s*["']?[A-Za-z0-9._~+\/-]{20,}["']?/i},
 {name:"database-url",re:/\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s:@]+(?::[^\s@]+)?@[^\s]+/i},
 {name:"bearer-token",re:/\bBearer\s+[A-Za-z0-9._~+\/-]{20,}=*/i},
 {name:"aws-access-key",re:/\bAKIA[0-9A-Z]{16}\b/},
