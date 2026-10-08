@@ -7,9 +7,9 @@ import { safeWorkspacePath } from "@/services/repair-execution-domain";
 import { createInstallationToken, isGitHubAppConfigured } from "@/services/github-app-client";
 
 const API="https://api.github.com";
-const repoPattern=/^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$/;
+const repoPattern=/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const protectedBranches=new Set(["main","master","production","prod"]);
-const safeBranch=/^repair\\/[A-Za-z0-9_-]+$/;
+const safeBranch=/^repair\/[A-Za-z0-9_-]+$/;
 
 export type GitHubRepositoryMetadata={owner:string;name:string;fullName:string;defaultBranch:string;private:boolean;repositoryId:string};
 type AuthorizedRepo={repositoryIdentifier:string;repositoryOwner?:string|null;repositoryName?:string|null;githubRepositoryId?:string|null;installationId?:string|null;authorizationStatus:string;status:string};
