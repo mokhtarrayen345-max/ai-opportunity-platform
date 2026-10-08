@@ -8,11 +8,12 @@ import { scanSecretContent } from "@/services/repair-secret-scanner";
 import { canTransition } from "@/services/repair-execution-state-machine";
 import { executionCreateSchema, branchNameSchema } from "@/services/repair-api-schemas";
 import { assertWorkspaceRoot } from "@/services/repair-workspace";
+import { getControlledVerificationConfigReport } from "@/services/controlled-github-verification-config";
 
 export const readinessStatusSchema=z.enum(["READY","READY_WITH_WARNINGS","NOT_READY","BLOCKED"]);
 export type ReadinessStatus=z.infer<typeof readinessStatusSchema>;
 export type ReadinessCheck={key:string;status:"PASS"|"WARNING"|"BLOCKED"|"NOT_CONFIGURED";summary:string;remediation?:string};
-export type ReadinessAudit={status:ReadinessStatus;score:number;auditedAt:string;featureFlag:{configured:boolean;enabled:boolean;liveExecutionActive:boolean};controlledVerification:{configured:boolean;enabled:boolean;repositoryConfigured:boolean;executed:boolean;status:"NOT_EXECUTED"|"SUCCEEDED"|"FAILED"};checks:Record<string,ReadinessCheck[]>;blockers:string[];warnings:string[];recommendations:string[]};
+export type ReadinessAudit={status:ReadinessStatus;score:number;auditedAt:string;configurationReadiness:"READY"|"NOT_READY";manualVerificationReadiness:"READY"|"NOT_READY";realVerificationStatus:"NOT_PERFORMED"|"SUCCEEDED"|"FAILED";featureFlag:{configured:boolean;enabled:boolean;liveExecutionActive:boolean};controlledVerification:{configured:boolean;enabled:boolean;repositoryConfigured:boolean;executed:boolean;status:"NOT_EXECUTED"|"SUCCEEDED"|"FAILED"};checks:Record<string,ReadinessCheck[]>;blockers:string[];warnings:string[];recommendations:string[]};
 
 const configured=(name:string)=>Boolean(process.env[name]?.trim());
 const check=(key:string,status:ReadinessCheck["status"],summary:string,remediation?:string):ReadinessCheck=>({key,status,summary,...(remediation?{remediation}:{})});
