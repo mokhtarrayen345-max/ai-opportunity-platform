@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateKeyPairSync } from "node:crypto";
 
 const original = { ...process.env };
+const routeMocks = vi.hoisted(() => ({ user: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ getCurrentUser: routeMocks.user }));
 afterEach(() => { process.env = { ...original }; vi.restoreAllMocks(); });
 
 const validKey = () => generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ format: "pem", type: "pkcs8" }).toString();
@@ -69,9 +71,7 @@ describe("controlled GitHub verification preparation", () => {
 
 describe("controlled verification preflight API", () => {
   it("is authenticated and read-only", async () => {
-    const user = vi.hoisted(() => vi.fn());
-    vi.doMock("@/lib/auth", () => ({ getCurrentUser: user }));
-    user.mockResolvedValue({ id: "u1" });
+    routeMocks.user.mockResolvedValue({ id: "u1" });
     validEnvironment();
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const { GET } = await import("@/app/api/github/verification-preflight/route");
@@ -84,9 +84,7 @@ describe("controlled verification preflight API", () => {
   });
 
   it("does not expose credentials or tokens", async () => {
-    const user = vi.hoisted(() => vi.fn());
-    vi.doMock("@/lib/auth", () => ({ getCurrentUser: user }));
-    user.mockResolvedValue({ id: "u1" });
+    routeMocks.user.mockResolvedValue({ id: "u1" });
     validEnvironment();
     process.env.GITHUB_APP_PRIVATE_KEY = "SECRET-KEY";
     const { GET } = await import("@/app/api/github/verification-preflight/route");
