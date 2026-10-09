@@ -238,7 +238,6 @@ export async function requestPinnedDiagnostic(
 ): Promise<PinnedDiagnosticResponse> {
   const url = resolution.url;
   const options = buildPinnedRequestOptions(resolution, method, timeoutMs);
-  const transport = url.protocol === "https:" ? https : http;
   const started = Date.now();
   return new Promise((resolve, reject) => {
     let settled = false;
