@@ -16,8 +16,8 @@ function validEnvironment() {
   process.env.GITHUB_APP_CLIENT_SECRET = "client-secret";
   process.env.GITHUB_APP_SLUG = "ai-opportunity-platform";
   process.env.GITHUB_APP_PRIVATE_KEY = validKey();
-  process.env.GITHUB_ALLOWED_REPOSITORIES = "owner/verification-repo";
-  process.env.GITHUB_CONTROLLED_VERIFICATION_REPOSITORY = "owner/verification-repo";
+  process.env.GITHUB_ALLOWED_REPOSITORIES = "mokhtarrayen345-max/ai-opportunity-github-verification-test";
+  process.env.GITHUB_CONTROLLED_VERIFICATION_REPOSITORY = "mokhtarrayen345-max/ai-opportunity-github-verification-test";
 }
 
 describe("controlled GitHub verification preparation", () => {
@@ -62,10 +62,21 @@ describe("controlled GitHub verification preparation", () => {
     expect(JSON.stringify(report)).not.toContain("client-secret");
   });
 
-  it("keeps unrestricted repair execution disabled", async () => {
+  it("requires the general repair flag to be explicitly false", async () => {
     validEnvironment();
+    delete process.env.GITHUB_REPAIR_EXECUTION_ENABLED;
     const { getControlledVerificationConfigReport } = await import("@/services/controlled-github-verification-config");
-    expect(getControlledVerificationConfigReport().checks.repairExecutionDisabled).toBe(true);
+    const report = getControlledVerificationConfigReport();
+    expect(report.checks.repairExecutionDisabled).toBe(false);
+    expect(report.status).toBe("INVALID_CONFIGURATION");
+  });
+
+  it("requires the one fixed dedicated verification target", async () => {
+    validEnvironment();
+    process.env.GITHUB_CONTROLLED_VERIFICATION_REPOSITORY = "owner/verification-repo";
+    process.env.GITHUB_ALLOWED_REPOSITORIES = "owner/verification-repo";
+    const { getControlledVerificationConfigReport } = await import("@/services/controlled-github-verification-config");
+    expect(getControlledVerificationConfigReport().status).toBe("INVALID_CONFIGURATION");
   });
 });
 
