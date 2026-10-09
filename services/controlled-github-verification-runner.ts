@@ -71,7 +71,7 @@ export async function runControlledGitHubVerification(
   const base = "/repos/mokhtarrayen345-max/ai-opportunity-github-verification-test";
   const artifactPath = ".aop-verification/" + executionId + ".json";
   let token: Token | null = null;
-  let branchCreated = false;
+  let branchMayExist = false;
   let remoteVerified = false;
   let cleanupSucceeded = true;
 
@@ -129,11 +129,13 @@ export async function runControlledGitHubVerification(
     }
 
     if (baseSha) {
+      // The server may accept the create request even if the connection fails before
+      // its response arrives, so cleanup must be attempted once creation is attempted.
+      branchMayExist = true;
       await call(base + "/git/refs", {
         method: "POST",
         body: JSON.stringify({ ref: "refs/heads/" + branch, sha: baseSha }),
       });
-      branchCreated = true;
       await call(base + "/contents/" + artifactPath, {
         method: "PUT",
         body: JSON.stringify({
@@ -163,11 +165,13 @@ export async function runControlledGitHubVerification(
       });
       const commit = await commitResponse.json() as { sha?: string };
       if (!commit.sha) throw new Error("commit");
+      // See the non-empty repository path above: a lost response does not prove
+      // GitHub rejected the create request.
+      branchMayExist = true;
       await call(base + "/git/refs", {
         method: "POST",
         body: JSON.stringify({ ref: "refs/heads/" + branch, sha: commit.sha }),
       });
-      branchCreated = true;
     }
 
     const readResponse = await call(base + "/contents/" + artifactPath + "?ref=" + encodeURIComponent(branch));
@@ -179,7 +183,7 @@ export async function runControlledGitHubVerification(
   } catch {
     // Provider details, responses, and credentials remain server-side.
   } finally {
-    if (branchCreated && token) {
+    if (branchMayExist && token) {
       try {
         const url = new URL(base + "/git/refs/heads/" + branch.split("/").map(encodeURIComponent).join("/"), API);
         const response = await deps.request(url, {
