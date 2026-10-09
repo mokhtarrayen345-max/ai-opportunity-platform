@@ -138,7 +138,7 @@ describe("controlled GitHub verification runner", () => {
     expect(fake.requests.some((item) => item.method === "PUT" && item.url.includes("/contents/"))).toBe(false);
   });
 
-  it("attempts branch cleanup when the create response is lost", async () => {
+  it("does not delete a ref when the create response is lost and ownership is uncertain", async () => {
     setupEnv();
     const fake = fakeGitHub({ createResponseLost: true });
     const result = await runControlledGitHubVerification(repository, "exec_test", {
@@ -147,7 +147,8 @@ describe("controlled GitHub verification runner", () => {
     });
     expect(result.code).toBe("FAILED");
     expect(result.verified).toBe(false);
-    expect(fake.requests.some((item) => item.method === "DELETE" && item.url.includes("/git/refs/heads/"))).toBe(true);
+    expect(result.cleanupSucceeded).toBe(false);
+    expect(fake.requests.some((item) => item.method === "DELETE" && item.url.includes("/git/refs/heads/"))).toBe(false);
   });
 
 
