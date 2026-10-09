@@ -173,7 +173,7 @@ export async function resolveSafeDiagnosticUrl(
   for (const answer of answers) {
     const family = net.isIP(answer.address);
     if (!family || family !== answer.family || !isPublicDiagnosticAddress(answer.address)) {
-      throw new Error("Target resolves to a private or non-public network address.");
+      throw new Error("Target resolves to a private or local network address.");
     }
     addresses.push({ address: answer.address, family: family as 4 | 6 });
   }
