@@ -120,7 +120,7 @@ export async function runControlledVerification(
       await transitionExecution(p, id, "FAILED", {
         completedAt: new Date(),
         error: "Controlled GitHub verification failed or cleanup was incomplete.",
-        summary: "Real controlled verification did not complete with verified remote state and successful cleanup.",
+        summary: `Real controlled verification failed closed; remote readback ${result.remoteVerified ? "was verified" : "was not verified"}; temporary branch cleanup ${result.cleanupSucceeded ? "was confirmed or unnecessary" : "was not confirmed"}; installation-token revocation ${result.tokenRevocationSucceeded ? "was confirmed or unnecessary" : "was not confirmed and relies on token expiry"}.`,
       });
       return { status: "FAILED", executionId: id, message: "Controlled GitHub verification failed safely; no successful result was recorded." };
     }
