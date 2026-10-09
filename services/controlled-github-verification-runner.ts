@@ -239,7 +239,7 @@ export async function runControlledGitHubVerification(
     return { verified: true, branch, artifactPath, remoteVerified: true, cleanupSucceeded: true, tokenRevocationSucceeded, code: "VERIFIED_AND_CLEANED" };
   }
   if (remoteVerified) {
-    return { verified: false, branch, artifactPath, remoteVerified: true, cleanupSucceeded: false, tokenRevocationSucceeded, code: "VERIFIED_CLEANUP_FAILED" };
+    return { verified: false, branch, artifactPath, remoteVerified: true, cleanupSucceeded, tokenRevocationSucceeded, code: "VERIFIED_CLEANUP_FAILED" };
   }
   return { verified: false, branch, artifactPath, remoteVerified: false, cleanupSucceeded, tokenRevocationSucceeded, code: "FAILED" };
 }
