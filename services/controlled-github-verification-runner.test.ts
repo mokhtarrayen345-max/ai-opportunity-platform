@@ -27,7 +27,7 @@ function setupEnv() {
   vi.stubEnv("GITHUB_ALLOWED_REPOSITORIES", CONTROLLED_VERIFICATION_REPOSITORY);
 }
 
-function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean; createResponseLost?: boolean } = {}) {
+function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean; createResponseLost?: boolean; identityMismatch?: boolean; readbackMismatch?: boolean } = {}) {
   let artifactContent = "";
   const requests: Array<{ url: string; method: string }> = [];
   const request = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
@@ -37,7 +37,7 @@ function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; 
 
     if (url.endsWith("/installation/token") && method === "DELETE") return new Response(null, { status: 204 });
     if (url.endsWith("/repos/mokhtarrayen345-max/ai-opportunity-github-verification-test") && method === "GET") {
-      return jsonResponse({ id: 12345, full_name: CONTROLLED_VERIFICATION_REPOSITORY, default_branch: "main" });
+      return jsonResponse({ id: options.identityMismatch ? 99999 : 12345, full_name: CONTROLLED_VERIFICATION_REPOSITORY, default_branch: "main" });
     }
     if (url.endsWith("/git/ref/heads/main") && method === "GET") {
       return options.empty ? jsonResponse({ message: "Not Found" }, 404) : jsonResponse({ object: { sha: "base-sha" } });
@@ -64,7 +64,7 @@ function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; 
         type: "file",
         path: ".aop-verification/exec_test.json",
         encoding: "base64",
-        content: Buffer.from(artifactContent, "utf8").toString("base64"),
+        content: Buffer.from(options.readbackMismatch ? artifactContent + "tampered" : artifactContent, "utf8").toString("base64"),
       });
     }
     if (url.includes("/git/refs/heads/github-verification/exec_test") && method === "DELETE") {
@@ -171,6 +171,31 @@ describe("controlled GitHub verification runner", () => {
     expect(result.verified).toBe(false);
     expect(result.remoteVerified).toBe(true);
     expect(result.cleanupSucceeded).toBe(false);
+  });
+
+
+  it("rejects mismatched remote repository identity before creating a branch", async () => {
+    setupEnv();
+    const fake = fakeGitHub({ identityMismatch: true });
+    const result = await runControlledGitHubVerification(repository, "exec_test", {
+      createToken: vi.fn(async () => ({ token: "mock-token", permissions: { contents: "write" } })),
+      request: fake.request as typeof fetch,
+    });
+    expect(result.code).toBe("FAILED");
+    expect(fake.requests.some((item) => item.method === "POST" && item.url.endsWith("/git/refs"))).toBe(false);
+  });
+
+  it("rejects a remote artifact whose content differs from the expected bytes", async () => {
+    setupEnv();
+    const fake = fakeGitHub({ readbackMismatch: true });
+    const result = await runControlledGitHubVerification(repository, "exec_test", {
+      createToken: vi.fn(async () => ({ token: "mock-token", permissions: { contents: "write" } })),
+      request: fake.request as typeof fetch,
+      now: () => 1_800_000_000_000,
+    });
+    expect(result.code).toBe("FAILED");
+    expect(result.verified).toBe(false);
+    expect(result.remoteVerified).toBe(false);
   });
 
   it("does not expose provider failures or tokens", async () => {
