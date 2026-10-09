@@ -101,6 +101,36 @@ describe("controlled GitHub verification runner", () => {
     expect(result.code).toBe("BLOCKED");
   });
 
+
+  it.each([undefined, "", "TRUE", "1", "yes"])("fails closed when the controlled feature flag is missing or malformed (%s)", async (flag) => {
+    setupEnv();
+    if (flag === undefined) vi.stubEnv("GITHUB_CONTROLLED_VERIFICATION_ENABLED", "");
+    else vi.stubEnv("GITHUB_CONTROLLED_VERIFICATION_ENABLED", flag);
+    const createToken = vi.fn();
+    const result = await runControlledGitHubVerification(repository, "exec_test", { createToken });
+    expect(result.code).toBe("BLOCKED");
+    expect(createToken).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed repository identifiers before requesting a token", async () => {
+    setupEnv();
+    const createToken = vi.fn();
+    const result = await runControlledGitHubVerification({ ...repository, githubRepositoryId: "12abc" }, "exec_test", { createToken });
+    expect(result.code).toBe("BLOCKED");
+    expect(createToken).not.toHaveBeenCalled();
+  });
+
+  it("rejects a token without contents write permission before making API calls", async () => {
+    setupEnv();
+    const request = vi.fn();
+    const result = await runControlledGitHubVerification(repository, "exec_test", {
+      createToken: vi.fn(async () => ({ token: "mock-token", permissions: { contents: "read" } })),
+      request: request as typeof fetch,
+    });
+    expect(result.code).toBe("FAILED");
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("blocks when the general repair flag is not explicitly false", async () => {
     setupEnv();
     vi.stubEnv("GITHUB_REPAIR_EXECUTION_ENABLED", "true");
