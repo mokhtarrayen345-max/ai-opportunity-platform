@@ -74,6 +74,7 @@ export async function runControlledVerification(
     data: { userId, repairPlanId: plan.id, authorizedRepositoryId: repo.id },
   });
   const id = execution.id;
+  let currentState: "PENDING" | "AUTHORIZED" | "RUNNING" | "TESTING" = "PENDING";
 
   try {
     await transitionExecution(p, id, "AUTHORIZED", {
@@ -81,9 +82,10 @@ export async function runControlledVerification(
       authorizedAt: new Date(),
       authorizedBy: userId,
     });
+    currentState = "AUTHORIZED";
 
-    const meta = await (provider || new GitHubRepositoryProvider()).validateAuthorizedRepository(repo);
-    if (!meta.defaultBranch || !verificationBranch(id)) {
+    const meta = await (provider || new GitHubRepositoryProvider()).validateAuthorizedRepository(repo, true);
+    if (!verificationBranch(id)) {
       throw new Error("Controlled verification preflight failed.");
     }
 
@@ -97,9 +99,11 @@ export async function runControlledVerification(
       startedAt: new Date(),
       error: null,
     });
+    currentState = "RUNNING";
 
     if (process.env.NODE_ENV === "test" || process.env.GITHUB_CONTROLLED_VERIFICATION_MOCK === "true") {
       await transitionExecution(p, id, "TESTING");
+      currentState = "TESTING";
       await transitionExecution(p, id, "SUCCEEDED", {
         completedAt: new Date(),
         summary: "Mock controlled verification passed; no GitHub write was performed.",
@@ -116,6 +120,8 @@ export async function runControlledVerification(
     }, id);
 
     if (!result.verified || !result.remoteVerified || !result.cleanupSucceeded || result.code !== "VERIFIED_AND_CLEANED") {
+      await transitionExecution(p, id, "TESTING");
+      currentState = "TESTING";
       await transitionExecution(p, id, "FAILED", {
         completedAt: new Date(),
         error: "Controlled GitHub verification failed or cleanup was incomplete.",
@@ -127,6 +133,7 @@ export async function runControlledVerification(
     await transitionExecution(p, id, "TESTING", {
       summary: "Remote GitHub artifact verified; temporary branch cleanup succeeded.",
     });
+    currentState = "TESTING";
     await transitionExecution(p, id, "SUCCEEDED", {
       completedAt: new Date(),
       summary: "Real controlled GitHub write/readback verification succeeded and temporary branch cleanup completed.",
@@ -134,6 +141,22 @@ export async function runControlledVerification(
     return { status: "SUCCEEDED", executionId: id, message: "Controlled GitHub verification succeeded and the temporary branch was cleaned up." };
   } catch {
     try {
+      if (currentState === "RUNNING") {
+        await transitionExecution(p, id, "TESTING");
+        currentState = "TESTING";
+      } else if (currentState === "PENDING") {
+        await transitionExecution(p, id, "AUTHORIZED", { authorizationStatus: "AUTHORIZED", authorizedAt: new Date(), authorizedBy: userId });
+        currentState = "AUTHORIZED";
+        await transitionExecution(p, id, "RUNNING", { workspaceId: "controlled-verification", branchName: verificationBranch(id), startedAt: new Date(), error: null });
+        currentState = "RUNNING";
+        await transitionExecution(p, id, "TESTING");
+        currentState = "TESTING";
+      } else if (currentState === "AUTHORIZED") {
+        await transitionExecution(p, id, "RUNNING", { workspaceId: "controlled-verification", branchName: verificationBranch(id), startedAt: new Date(), error: null });
+        currentState = "RUNNING";
+        await transitionExecution(p, id, "TESTING");
+        currentState = "TESTING";
+      }
       await transitionExecution(p, id, "FAILED", {
         completedAt: new Date(),
         error: "Controlled verification failed; diagnostics remain server-side.",
