@@ -74,6 +74,16 @@ export class GitHubRepositoryProvider{
       await githubFetch("/repos/"+encodeURIComponent(meta.owner)+"/"+encodeURIComponent(meta.name)+"/git/refs",token.token,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ref:"refs/heads/"+branch,sha:base.object.sha})});
     }finally{try{await githubFetch("/installation/token",token.token,{method:"DELETE"});}catch{}}
   }
+  async deleteBranch(repo:AuthorizedRepo,branch:string){
+    if(process.env.GITHUB_REPAIR_EXECUTION_ENABLED!=="true")throw new Error("GitHub repair write execution is disabled by default.");
+    const meta=await this.validateAuthorizedRepository(repo);
+    if(!safeBranch.test(branch)||protectedBranches.has(branch)||branch===meta.defaultBranch)throw new Error("Unsafe repair branch.");
+    const token=await createInstallationToken(repo.installationId!,repo.githubRepositoryId!,true);
+    try{
+      const path="/repos/"+encodeURIComponent(meta.owner)+"/"+encodeURIComponent(meta.name)+"/git/refs/heads/"+branch.split("/").map(encodeURIComponent).join("/");
+      await githubFetch(path,token.token,{method:"DELETE"});
+    }finally{try{await githubFetch("/installation/token",token.token,{method:"DELETE"});}catch{}}
+  }
   async createWorkspace(repo:AuthorizedRepo,executionId:string,branch:string){
     if(process.env.GITHUB_REPAIR_EXECUTION_ENABLED!=="true")throw new Error("GitHub repair write execution is disabled by default.");
     const meta=await this.validateAuthorizedRepository(repo);if(!safeBranch.test(branch)||protectedBranches.has(branch)||branch===meta.defaultBranch)throw new Error("Unsafe repair branch.");
