@@ -128,7 +128,8 @@ describe("controlled GitHub verification runner", () => {
       request: request as typeof fetch,
     });
     expect(result.code).toBe("FAILED");
-    expect(request).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalled();
+    expect(request.mock.calls.every(([input]) => String(input).endsWith("/installation/token"))).toBe(true);
   });
 
   it("blocks when the general repair flag is not explicitly false", async () => {
