@@ -27,7 +27,7 @@ function setupEnv() {
   vi.stubEnv("GITHUB_ALLOWED_REPOSITORIES", CONTROLLED_VERIFICATION_REPOSITORY);
 }
 
-function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean } = {}) {
+function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean; createResponseLost?: boolean } = {}) {
   let artifactContent = "";
   const requests: Array<{ url: string; method: string }> = [];
   const request = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
@@ -42,7 +42,10 @@ function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; 
     if (url.endsWith("/git/ref/heads/main") && method === "GET") {
       return options.empty ? jsonResponse({ message: "Not Found" }, 404) : jsonResponse({ object: { sha: "base-sha" } });
     }
-    if (url.endsWith("/git/refs") && method === "POST") return jsonResponse({ ref: "refs/heads/github-verification/exec_test" }, 201);
+    if (url.endsWith("/git/refs") && method === "POST") {
+      if (options.createResponseLost) throw new Error("connection dropped after remote create");
+      return jsonResponse({ ref: "refs/heads/github-verification/exec_test" }, 201);
+    }
     if (url.endsWith("/git/blobs") && method === "POST") {
       const body = JSON.parse(String(init?.body)) as { content: string };
       artifactContent = body.content;
@@ -131,6 +134,18 @@ describe("controlled GitHub verification runner", () => {
     expect(result.code).toBe("VERIFIED_AND_CLEANED");
     expect(fake.requests.some((item) => item.method === "POST" && item.url.endsWith("/git/commits"))).toBe(true);
     expect(fake.requests.some((item) => item.method === "PUT" && item.url.includes("/contents/"))).toBe(false);
+  });
+
+  it("attempts branch cleanup when the create response is lost", async () => {
+    setupEnv();
+    const fake = fakeGitHub({ createResponseLost: true });
+    const result = await runControlledGitHubVerification(repository, "exec_test", {
+      createToken: vi.fn(async () => ({ token: "mock-token", permissions: { contents: "write" } })),
+      request: fake.request as typeof fetch,
+    });
+    expect(result.code).toBe("FAILED");
+    expect(result.verified).toBe(false);
+    expect(fake.requests.some((item) => item.method === "DELETE" && item.url.includes("/git/refs/heads/"))).toBe(true);
   });
 
   it("never reports success when remote readback fails", async () => {
