@@ -31,11 +31,7 @@ type RunnerDependencies = {
   now: () => number;
 };
 
-const defaults: RunnerDependencies = {
-  createToken: createInstallationToken,
-  request: fetch,
-  now: Date.now,
-};
+const defaults: RunnerDependencies = { createToken: createInstallationToken, request: fetch, now: Date.now };
 
 function safeExecutionId(id: string) {
   return /^[A-Za-z0-9_-]{1,80}$/.test(id);
@@ -47,22 +43,17 @@ export function controlledVerificationBranch(executionId: string) {
   return protectedBranches.has(branch.toLowerCase()) ? null : branch;
 }
 
-function safeError() {
-  return new Error("Controlled GitHub verification failed safely; sensitive provider details were withheld.");
-}
-
 export async function runControlledGitHubVerification(
   repository: VerificationRepository,
   executionId: string,
   dependencies: Partial<RunnerDependencies> = {},
 ): Promise<VerificationRunnerResult> {
   const deps = { ...defaults, ...dependencies };
-  if (process.env.GITHUB_CONTROLLED_VERIFICATION_ENABLED !== "true") {
-    return { verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, code: "BLOCKED" };
-  }
-  if (process.env.GITHUB_REPAIR_EXECUTION_ENABLED !== "false") {
-    return { verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, code: "BLOCKED" };
-  }
+  const blocked = (): VerificationRunnerResult => ({
+    verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, code: "BLOCKED",
+  });
+  if (process.env.GITHUB_CONTROLLED_VERIFICATION_ENABLED !== "true") return blocked();
+  if (process.env.GITHUB_REPAIR_EXECUTION_ENABLED !== "false") return blocked();
   if (
     repository.repositoryIdentifier !== CONTROLLED_VERIFICATION_REPOSITORY ||
     repository.status !== "ACTIVE" ||
@@ -70,28 +61,23 @@ export async function runControlledGitHubVerification(
     !repository.installationId ||
     !repository.githubRepositoryId ||
     process.env.GITHUB_CONTROLLED_VERIFICATION_REPOSITORY !== CONTROLLED_VERIFICATION_REPOSITORY
-  ) {
-    return { verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, code: "BLOCKED" };
-  }
-  const allowed = new Set((process.env.GITHUB_ALLOWED_REPOSITORIES || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean));
-  if (!allowed.has(CONTROLLED_VERIFICATION_REPOSITORY.toLowerCase())) {
-    return { verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, code: "BLOCKED" };
-  }
-  const branch = controlledVerificationBranch(executionId);
-  if (!branch) return { verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, code: "BLOCKED" };
+  ) return blocked();
 
-  const owner = "mokhtarrayen345-max";
-  const name = "ai-opportunity-github-verification-test";
-  const base = "/repos/" + owner + "/" + name;
+  const allowed = new Set((process.env.GITHUB_ALLOWED_REPOSITORIES || "").split(",").map((v) => v.trim().toLowerCase()).filter(Boolean));
+  if (!allowed.has(CONTROLLED_VERIFICATION_REPOSITORY.toLowerCase())) return blocked();
+  const branch = controlledVerificationBranch(executionId);
+  if (!branch) return blocked();
+
+  const base = "/repos/mokhtarrayen345-max/ai-opportunity-github-verification-test";
   const artifactPath = ".aop-verification/" + executionId + ".json";
   let token: Token | null = null;
   let branchCreated = false;
   let remoteVerified = false;
   let cleanupSucceeded = true;
 
-  const call = async (path: string, init: RequestInit = {}) => {
+  const call = async (path: string, init: RequestInit = {}, allowNotFound = false) => {
     const url = new URL(path, API);
-    if (url.origin !== API || !path.startsWith(base + "/") && path !== base) throw new Error("scope");
+    if (url.origin !== API || (!path.startsWith(base + "/") && path !== base)) throw new Error("scope");
     const response = await deps.request(url, {
       ...init,
       headers: {
@@ -103,60 +89,95 @@ export async function runControlledGitHubVerification(
       },
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) throw new Error("provider");
+    if (!response.ok && !(allowNotFound && response.status === 404)) throw new Error("provider");
     return response;
   };
 
   try {
-    token = await deps.createToken(repository.installationId, repository.githubRepositoryId, true);
+    token = await deps.createToken(repository.installationId!, repository.githubRepositoryId!, true);
     if (token.permissions?.contents !== "write") throw new Error("permission");
 
     const repoResponse = await call(base);
     const metadata = await repoResponse.json() as { id?: number; full_name?: string; default_branch?: string };
     if (
       String(metadata.id) !== String(repository.githubRepositoryId) ||
-      metadata.full_name?.toLowerCase() !== CONTROLLED_VERIFICATION_REPOSITORY.toLowerCase() ||
-      !metadata.default_branch
+      metadata.full_name?.toLowerCase() !== CONTROLLED_VERIFICATION_REPOSITORY.toLowerCase()
     ) throw new Error("identity");
 
-    const defaultRefPath = base + "/git/ref/heads/" + encodeURIComponent(metadata.default_branch);
-    const refResponse = await call(defaultRefPath);
-    const ref = await refResponse.json() as { object?: { sha?: string } };
-    if (!ref.object?.sha) throw new Error("base-ref");
-
-    await call(base + "/git/refs", {
-      method: "POST",
-      body: JSON.stringify({ ref: "refs/heads/" + branch, sha: ref.object.sha }),
-    });
-    branchCreated = true;
-
+    const timestamp = deps.now();
     const artifact = {
       schema: "aop-controlled-github-verification/v1",
       executionId,
       repository: CONTROLLED_VERIFICATION_REPOSITORY,
       branch,
-      createdAt: new Date(deps.now()).toISOString(),
+      createdAt: new Date(timestamp).toISOString(),
       purpose: "harmless controlled GitHub API write/readback verification",
-      nonce: createHash("sha256").update(executionId + ":" + deps.now()).digest("hex").slice(0, 24),
+      nonce: createHash("sha256").update(executionId + ":" + timestamp).digest("hex").slice(0, 24),
     };
     const expected = JSON.stringify(artifact, null, 2) + "\n";
-    await call(base + "/contents/" + artifactPath, {
-      method: "PUT",
-      body: JSON.stringify({
-        message: "chore: controlled GitHub verification artifact",
-        branch,
-        content: Buffer.from(expected, "utf8").toString("base64"),
-      }),
-    });
+    const defaultBranch = metadata.default_branch?.trim();
+    let baseSha: string | null = null;
+
+    // Existing repositories branch from the current default ref without changing it.
+    if (defaultBranch) {
+      const refResponse = await call(base + "/git/ref/heads/" + encodeURIComponent(defaultBranch), {}, true);
+      if (refResponse.status !== 404) {
+        const ref = await refResponse.json() as { object?: { sha?: string } };
+        if (!ref.object?.sha) throw new Error("base-ref");
+        baseSha = ref.object.sha;
+      }
+    }
+
+    if (baseSha) {
+      await call(base + "/git/refs", {
+        method: "POST",
+        body: JSON.stringify({ ref: "refs/heads/" + branch, sha: baseSha }),
+      });
+      branchCreated = true;
+      await call(base + "/contents/" + artifactPath, {
+        method: "PUT",
+        body: JSON.stringify({
+          message: "chore: controlled GitHub verification artifact",
+          branch,
+          content: Buffer.from(expected, "utf8").toString("base64"),
+        }),
+      });
+    } else {
+      // Empty test repositories have no ref to branch from. Build a single orphan commit
+      // containing only the verification artifact; never create or update the default branch.
+      const blobResponse = await call(base + "/git/blobs", {
+        method: "POST",
+        body: JSON.stringify({ content: expected, encoding: "utf-8" }),
+      });
+      const blob = await blobResponse.json() as { sha?: string };
+      if (!blob.sha) throw new Error("blob");
+      const treeResponse = await call(base + "/git/trees", {
+        method: "POST",
+        body: JSON.stringify({ tree: [{ path: artifactPath, mode: "100644", type: "blob", sha: blob.sha }] }),
+      });
+      const tree = await treeResponse.json() as { sha?: string };
+      if (!tree.sha) throw new Error("tree");
+      const commitResponse = await call(base + "/git/commits", {
+        method: "POST",
+        body: JSON.stringify({ message: "chore: controlled GitHub verification artifact", tree: tree.sha, parents: [] }),
+      });
+      const commit = await commitResponse.json() as { sha?: string };
+      if (!commit.sha) throw new Error("commit");
+      await call(base + "/git/refs", {
+        method: "POST",
+        body: JSON.stringify({ ref: "refs/heads/" + branch, sha: commit.sha }),
+      });
+      branchCreated = true;
+    }
 
     const readResponse = await call(base + "/contents/" + artifactPath + "?ref=" + encodeURIComponent(branch));
-    const remote = await readResponse.json() as { type?: string; path?: string; content?: string; encoding?: string; sha?: string };
+    const remote = await readResponse.json() as { type?: string; path?: string; content?: string; encoding?: string };
     if (remote.type !== "file" || remote.path !== artifactPath || remote.encoding !== "base64" || !remote.content) throw new Error("readback");
     const decoded = Buffer.from(remote.content.replace(/\s/g, ""), "base64").toString("utf8");
     if (decoded !== expected) throw new Error("content-mismatch");
     remoteVerified = true;
   } catch {
-    // The public result never contains raw provider errors, responses, or credentials.
+    // Provider details, responses, and credentials remain server-side.
   } finally {
     if (branchCreated && token) {
       try {
@@ -187,7 +208,7 @@ export async function runControlledGitHubVerification(
           signal: AbortSignal.timeout(10000),
         });
       } catch {
-        // Best-effort token revocation; token values are never logged or returned.
+        // Best-effort token revocation.
       }
     }
   }
