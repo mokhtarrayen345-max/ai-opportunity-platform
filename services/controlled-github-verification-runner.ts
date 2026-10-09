@@ -115,7 +115,15 @@ export async function runControlledGitHubVerification(
       // A timeout or lost response is ambiguous: never delete a possibly pre-existing ref.
       branchOwnershipConfirmed = true;
     } catch (error) {
-      if (error instanceof GitHubHttpError && error.status >= 400 && error.status < 500) {
+      if (
+        error instanceof GitHubHttpError &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        error.status !== 408 &&
+        error.status !== 429
+      ) {
+        // Ordinary 4xx responses are definitive rejection; 408 and 429 may be
+        // transient and must be treated as uncertain remote outcomes.
         branchMayExist = false;
       }
       throw error;
