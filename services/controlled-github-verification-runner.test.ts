@@ -27,7 +27,7 @@ function setupEnv() {
   vi.stubEnv("GITHUB_ALLOWED_REPOSITORIES", CONTROLLED_VERIFICATION_REPOSITORY);
 }
 
-function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean; createResponseLost?: boolean; identityMismatch?: boolean; readbackMismatch?: boolean } = {}) {
+function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean; createResponseLost?: boolean; createRejected?: boolean; revokeFails?: boolean; identityMismatch?: boolean; readbackMismatch?: boolean } = {}) {
   let artifactContent = "";
   const requests: Array<{ url: string; method: string }> = [];
   const request = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
@@ -35,7 +35,7 @@ function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; 
     const method = init?.method || "GET";
     requests.push({ url, method });
 
-    if (url.endsWith("/installation/token") && method === "DELETE") return new Response(null, { status: 204 });
+    if (url.endsWith("/installation/token") && method === "DELETE") return options.revokeFails ? jsonResponse({ message: "denied" }, 500) : new Response(null, { status: 204 });
     if (url.endsWith("/repos/mokhtarrayen345-max/ai-opportunity-github-verification-test") && method === "GET") {
       return jsonResponse({ id: options.identityMismatch ? 99999 : 12345, full_name: CONTROLLED_VERIFICATION_REPOSITORY, default_branch: "main" });
     }
@@ -44,6 +44,7 @@ function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; 
     }
     if (url.endsWith("/git/refs") && method === "POST") {
       if (options.createResponseLost) throw new Error("connection dropped after remote create");
+      if (options.createRejected) return jsonResponse({ message: "Reference already exists" }, 422);
       return jsonResponse({ ref: "refs/heads/github-verification/exec_test" }, 201);
     }
     if (url.endsWith("/git/blobs") && method === "POST") {
@@ -196,6 +197,32 @@ describe("controlled GitHub verification runner", () => {
     expect(result.code).toBe("FAILED");
     expect(result.verified).toBe(false);
     expect(result.remoteVerified).toBe(false);
+  });
+
+
+  it("does not delete a possibly pre-existing branch after a definitive ref rejection", async () => {
+    setupEnv();
+    const fake = fakeGitHub({ createRejected: true });
+    const result = await runControlledGitHubVerification(repository, "exec_test", {
+      createToken: vi.fn(async () => ({ token: "mock-token", permissions: { contents: "write" } })),
+      request: fake.request as typeof fetch,
+    });
+    expect(result.code).toBe("FAILED");
+    expect(fake.requests.some((item) => item.method === "DELETE" && item.url.includes("/git/refs/heads/"))).toBe(false);
+  });
+
+  it("reports token revocation failure without exposing credentials", async () => {
+    setupEnv();
+    const fake = fakeGitHub({ revokeFails: true });
+    const result = await runControlledGitHubVerification(repository, "exec_test", {
+      createToken: vi.fn(async () => ({ token: "mock-token", permissions: { contents: "write" } })),
+      request: fake.request as typeof fetch,
+      now: () => 1_800_000_000_000,
+    });
+    expect(result.code).toBe("VERIFIED_AND_CLEANED");
+    expect(result.cleanupSucceeded).toBe(true);
+    expect(result.tokenRevocationSucceeded).toBe(false);
+    expect(JSON.stringify(result)).not.toContain("mock-token");
   });
 
   it("does not expose provider failures or tokens", async () => {
