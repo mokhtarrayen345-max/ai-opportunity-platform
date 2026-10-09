@@ -248,15 +248,17 @@ export async function requestPinnedDiagnostic(
       settled = true;
       reject(new Error(message));
     };
+    let request: DiagnosticRequestHandle | null = null;
     const timer = setTimeout(() => {
-      request.destroy();
+      request?.destroy();
       finishError("Diagnostic request timed out.");
     }, timeoutMs);
-    const request = requestFactory(url.protocol as "http:" | "https:", options, (response: DiagnosticResponseHandle) => {
+    try {
+      request = requestFactory(url.protocol as "http:" | "https:", options, (response: DiagnosticResponseHandle) => {
       const declaredLength = Number(response.headers["content-length"]);
       if (Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) {
         response.destroy();
-        request.destroy();
+        request?.destroy();
         clearTimeout(timer);
         finishError("Response exceeds the diagnostic size limit.");
         return;
@@ -266,7 +268,7 @@ export async function requestPinnedDiagnostic(
         total += bytes.byteLength;
         if (total > maxBodyBytes) {
           response.destroy();
-          request.destroy();
+          request?.destroy();
           clearTimeout(timer);
           finishError("Response exceeds the diagnostic size limit.");
           return;
@@ -301,7 +303,12 @@ export async function requestPinnedDiagnostic(
           validTo,
         });
       });
-    });
+      });
+    } catch {
+      clearTimeout(timer);
+      finishError("Diagnostic network request failed.");
+      return;
+    }
     request.on("error", () => {
       clearTimeout(timer);
       finishError("Diagnostic network request failed.");
