@@ -50,7 +50,7 @@ async function withAskPass<T>(token:string,fn:(env:NodeJS.ProcessEnv)=>Promise<T
   finally{await rm(dir,{recursive:true,force:true}).catch(()=>{})}
 }
 export class GitHubRepositoryProvider{
-  async validateAuthorizedRepository(repo:AuthorizedRepo):Promise<GitHubRepositoryMetadata>{
+  async validateAuthorizedRepository(repo:AuthorizedRepo,allowEmptyRepository=false):Promise<GitHubRepositoryMetadata>{
     if(repo.status!=="ACTIVE"||repo.authorizationStatus!=="AUTHORIZED")throw new Error("GitHub repository authorization is not active.");
     if(!repo.installationId||!repo.githubRepositoryId)throw new Error("GitHub repository authorization metadata is incomplete.");
     if(!isGitHubAppConfigured())throw new Error("GitHub App server configuration is missing.");
@@ -59,9 +59,9 @@ export class GitHubRepositoryProvider{
     try{
       const data=await(await githubFetch("/repos/"+encodeURIComponent(parsed.owner)+"/"+encodeURIComponent(parsed.name),token.token)).json() as any;
       if(String(data.id)!==String(repo.githubRepositoryId)||String(data.full_name||"").toLowerCase()!==parsed.fullName.toLowerCase())throw new Error("GitHub repository identity mismatch.");
-      if(!data.default_branch)throw new Error("GitHub repository default branch is unavailable.");
+      if(!data.default_branch&&!allowEmptyRepository)throw new Error("GitHub repository default branch is unavailable.");
       const contentsPermission=token.permissions?.contents;if(contentsPermission!=="read"&&contentsPermission!=="write")throw new Error("GitHub App lacks required repository contents permission.");
-      return {owner:parsed.owner,name:parsed.name,fullName:String(data.full_name),defaultBranch:String(data.default_branch),private:Boolean(data.private),repositoryId:String(data.id)};
+      return {owner:parsed.owner,name:parsed.name,fullName:String(data.full_name),defaultBranch:String(data.default_branch||""),private:Boolean(data.private),repositoryId:String(data.id)};
     }finally{try{await githubFetch("/installation/token",token.token,{method:"DELETE"});}catch{}}
   }
   async createBranch(repo:AuthorizedRepo,branch:string){
