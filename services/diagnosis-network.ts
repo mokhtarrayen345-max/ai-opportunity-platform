@@ -282,3 +282,41 @@ export async function requestPinnedDiagnostic(
     request.end();
   });
 }
+
+export type PinnedRedirectOptions = {
+  resolver?: DiagnosticResolver;
+  request?: typeof requestPinnedDiagnostic;
+  maxRedirects?: number;
+  maxBodyBytes?: number;
+  timeoutMs?: number;
+};
+export type PinnedRedirectResult = {
+  response: PinnedDiagnosticResponse;
+  redirects: number;
+  finalUrl: string;
+};
+
+export async function fetchPinnedWithRedirects(
+  raw: string,
+  origin: string,
+  options: PinnedRedirectOptions = {},
+): Promise<PinnedRedirectResult> {
+  const resolver = options.resolver ?? defaultResolver;
+  const request = options.request ?? requestPinnedDiagnostic;
+  const maxRedirects = options.maxRedirects ?? 3;
+  const maxBodyBytes = options.maxBodyBytes ?? 1024 * 1024;
+  const timeoutMs = options.timeoutMs ?? 8000;
+  let resolution = await resolveSafeDiagnosticUrl(raw, origin, resolver);
+  let redirects = 0;
+  while (true) {
+    const response = await request(resolution, "GET", maxBodyBytes, timeoutMs);
+    if (response.status < 300 || response.status >= 400) {
+      return { response, redirects, finalUrl: resolution.url.toString() };
+    }
+    if (redirects >= maxRedirects) throw new Error("Redirect limit exceeded.");
+    const location = response.headers.get("location");
+    if (!location) throw new Error("Redirect response has no location.");
+    resolution = await resolveSafeDiagnosticUrl(new URL(location, resolution.url).toString(), origin, resolver);
+    redirects += 1;
+  }
+}
