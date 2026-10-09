@@ -43,7 +43,11 @@ function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; 
       return options.empty ? jsonResponse({ message: "Not Found" }, 404) : jsonResponse({ object: { sha: "base-sha" } });
     }
     if (url.endsWith("/git/refs") && method === "POST") return jsonResponse({ ref: "refs/heads/github-verification/exec_test" }, 201);
-    if (url.endsWith("/git/blobs") && method === "POST") return jsonResponse({ sha: "blob-sha" }, 201);
+    if (url.endsWith("/git/blobs") && method === "POST") {
+      const body = JSON.parse(String(init?.body)) as { content: string };
+      artifactContent = body.content;
+      return jsonResponse({ sha: "blob-sha" }, 201);
+    }
     if (url.endsWith("/git/trees") && method === "POST") return jsonResponse({ sha: "tree-sha" }, 201);
     if (url.endsWith("/git/commits") && method === "POST") return jsonResponse({ sha: "commit-sha" }, 201);
     if (url.includes("/contents/.aop-verification/exec_test.json") && method === "PUT") {
