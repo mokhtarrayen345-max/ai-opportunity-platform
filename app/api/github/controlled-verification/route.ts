@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let result;
+  let result: Awaited<ReturnType<typeof runControlledVerification>>;
   try {
     result = await runControlledVerification(user.id);
   } catch {
