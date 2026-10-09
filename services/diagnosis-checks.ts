@@ -1,4 +1,4 @@
-import {fetchPinnedWithRedirects,resolveSafeDiagnosticUrl,requestPinnedDiagnostic} from "@/services/diagnosis-network";
+import {fetchPinnedWithRedirects,resolveSafeDiagnosticUrl,requestPinnedDiagnostic,type DiagnosticResolver,type DiagnosticRequestFactory} from "@/services/diagnosis-network";
 import {estimateRepairMinutes,type DiagnosticFindingInput,type Severity} from "@/services/diagnosis-domain";
 const TIMEOUT_MS=8000,MAX_BODY_BYTES=1024*1024,MAX_REDIRECTS=3,PERF_WARN_MS=1500,PERF_HIGH_MS=3000;
 export type SafeTarget={id:string;normalizedUrl:string;protocol:string;healthEndpoint:string|null;apiEndpoint:string|null};
@@ -22,9 +22,9 @@ export function certificateFinding(metadata:CertificateMetadata|null,nowMs=Date.
  if(remainingDays<=14)return {severity:"MEDIUM",description:"The server certificate is approaching expiration.",observedValue:metadata.validTo,remainingDays};
  return null;
 }
-async function getCertificateMetadata(rawUrl:string):Promise<CertificateMetadata>{
- const resolution=await resolveSafeDiagnosticUrl(rawUrl);
- const response=await requestPinnedDiagnostic(resolution,"HEAD",0,CERT_TIMEOUT_MS);
+export async function getCertificateMetadata(rawUrl:string,resolver?:DiagnosticResolver,requestFactory?:DiagnosticRequestFactory):Promise<CertificateMetadata>{
+ const resolution=await resolveSafeDiagnosticUrl(rawUrl,undefined,resolver);
+ const response=await requestPinnedDiagnostic(resolution,"HEAD",0,CERT_TIMEOUT_MS,requestFactory);
  if(response.status>=300&&response.status<400)throw new Error("Certificate metadata request redirected.");
  if(!response.validTo)throw new Error("Certificate metadata was unavailable.");
  return {validTo:response.validTo};
