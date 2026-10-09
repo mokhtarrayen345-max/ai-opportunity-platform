@@ -66,7 +66,9 @@ export async function runControlledGitHubVerification(
     repository.status !== "ACTIVE" ||
     repository.authorizationStatus !== "AUTHORIZED" ||
     !repository.installationId ||
+    !/^\\d+$/.test(repository.installationId) ||
     !repository.githubRepositoryId ||
+    !/^\\d+$/.test(repository.githubRepositoryId) ||
     process.env.GITHUB_CONTROLLED_VERIFICATION_REPOSITORY !== CONTROLLED_VERIFICATION_REPOSITORY
   ) return blocked();
 
