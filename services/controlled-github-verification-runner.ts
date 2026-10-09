@@ -7,6 +7,12 @@ const API = "https://api.github.com";
 const API_VERSION = "2022-11-28";
 const protectedBranches = new Set(["main", "master", "production", "prod"]);
 
+class GitHubHttpError extends Error {
+  constructor(readonly status: number) {
+    super("GitHub provider request failed.");
+  }
+}
+
 export type VerificationRepository = {
   repositoryIdentifier: string;
   githubRepositoryId?: string | null;
@@ -89,8 +95,25 @@ export async function runControlledGitHubVerification(
       },
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok && !(allowNotFound && response.status === 404)) throw new Error("provider");
+    if (!response.ok && !(allowNotFound && response.status === 404)) throw new GitHubHttpError(response.status);
     return response;
+  };
+
+  const createTemporaryRef = async (sha: string) => {
+    // A timeout may happen after GitHub creates the ref, so uncertain outcomes
+    // still trigger cleanup. A definitive 4xx must not delete a pre-existing ref.
+    branchMayExist = true;
+    try {
+      await call(base + "/git/refs", {
+        method: "POST",
+        body: JSON.stringify({ ref: "refs/heads/" + branch, sha }),
+      });
+    } catch (error) {
+      if (error instanceof GitHubHttpError && error.status >= 400 && error.status < 500) {
+        branchMayExist = false;
+      }
+      throw error;
+    }
   };
 
   try {
@@ -131,11 +154,7 @@ export async function runControlledGitHubVerification(
     if (baseSha) {
       // The server may accept the create request even if the connection fails before
       // its response arrives, so cleanup must be attempted once creation is attempted.
-      branchMayExist = true;
-      await call(base + "/git/refs", {
-        method: "POST",
-        body: JSON.stringify({ ref: "refs/heads/" + branch, sha: baseSha }),
-      });
+      await createTemporaryRef(baseSha);
       await call(base + "/contents/" + artifactPath, {
         method: "PUT",
         body: JSON.stringify({
@@ -167,11 +186,7 @@ export async function runControlledGitHubVerification(
       if (!commit.sha) throw new Error("commit");
       // See the non-empty repository path above: a lost response does not prove
       // GitHub rejected the create request.
-      branchMayExist = true;
-      await call(base + "/git/refs", {
-        method: "POST",
-        body: JSON.stringify({ ref: "refs/heads/" + branch, sha: commit.sha }),
-      });
+      await createTemporaryRef(commit.sha);
     }
 
     const readResponse = await call(base + "/contents/" + artifactPath + "?ref=" + encodeURIComponent(branch));
