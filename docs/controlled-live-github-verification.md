@@ -70,6 +70,7 @@ Record only:
 - generated verification branch
 - safe execution state
 - branch cleanup result
+- whether installation-token revocation was confirmed; if not, rely only on the documented token expiry and never report revocation as successful
 
 Never record:
 
