@@ -31,7 +31,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = await runControlledVerification(user.id);
+  let result;
+  try {
+    result = await runControlledVerification(user.id);
+  } catch {
+    return NextResponse.json(
+      { verification: { status: "FAILED", executionId: null, message: "Controlled verification failed safely." } },
+      { status: 500 },
+    );
+  }
   const status =
     result.status === "SUCCEEDED" ? 200 :
     result.status === "DISABLED" ? 403 :
