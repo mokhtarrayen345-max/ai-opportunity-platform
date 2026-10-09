@@ -6,7 +6,9 @@ import { assertWorkspaceFilePath } from "@/services/repair-workspace";
 
 const roots: string[] = [];
 async function tempRoot(prefix: string) {
-  const root = await mkdtemp(join(tmpdir(), "aop-repair-authorized-" + prefix));
+  const parent = join(tmpdir(), "aop-repair-authorized-");
+  await mkdir(parent, { recursive: true });
+  const root = await mkdtemp(join(parent, prefix));
   roots.push(root);
   return root;
 }
