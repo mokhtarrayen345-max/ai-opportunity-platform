@@ -116,8 +116,7 @@ export async function runControlledGitHubVerification(
     if (
       String(metadata.id) !== String(repository.githubRepositoryId) ||
       metadata.full_name?.toLowerCase() !== CONTROLLED_VERIFICATION_REPOSITORY.toLowerCase() ||
-      !metadata.default_branch ||
-      protectedBranches.has(metadata.default_branch.toLowerCase())
+      !metadata.default_branch
     ) throw new Error("identity");
 
     const defaultRefPath = base + "/git/ref/heads/" + encodeURIComponent(metadata.default_branch);
