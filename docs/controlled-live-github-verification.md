@@ -56,7 +56,7 @@ The controlled run must:
 7. Read the artifact back through the GitHub API and compare its exact contents before reporting remote verification success.
 8. Keep execution-state changes behind the centralized state machine.
 9. Produce safe audit metadata only.
-10. Delete the temporary verification branch. A branch cleanup failure prevents a successful final result. Installation-token revocation is attempted on a best-effort basis; the token also expires according to GitHub's token lifetime.
+10. Delete the temporary verification branch. A branch cleanup failure prevents a successful final result. Installation-token revocation must also be confirmed before reporting success. If the branch-creation response is lost or times out, ownership is uncertain: the runner must not delete a potentially pre-existing branch, reports cleanup as unconfirmed, and fails closed. If token revocation fails, the run fails closed and the token is left to expire according to GitHub's token lifetime.
 
 A mocked result, passing CI, or preflight response is not evidence of real GitHub execution.
 
