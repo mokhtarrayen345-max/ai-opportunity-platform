@@ -234,7 +234,8 @@ describe("controlled GitHub verification runner", () => {
       request: fake.request as typeof fetch,
       now: () => 1_800_000_000_000,
     });
-    expect(result.code).toBe("VERIFIED_AND_CLEANED");
+    expect(result.code).toBe("VERIFIED_CLEANUP_FAILED");
+    expect(result.verified).toBe(false);
     expect(result.cleanupSucceeded).toBe(true);
     expect(result.tokenRevocationSucceeded).toBe(false);
     expect(JSON.stringify(result)).not.toContain("mock-token");
