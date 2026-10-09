@@ -27,7 +27,7 @@ function setupEnv() {
   vi.stubEnv("GITHUB_ALLOWED_REPOSITORIES", CONTROLLED_VERIFICATION_REPOSITORY);
 }
 
-function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean; createResponseLost?: boolean; createRejected?: boolean; revokeFails?: boolean; identityMismatch?: boolean; readbackMismatch?: boolean } = {}) {
+function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; empty?: boolean; createResponseLost?: boolean; createRejected?: boolean; revokeFails?: boolean; writeFails?: boolean; identityMismatch?: boolean; readbackMismatch?: boolean } = {}) {
   let artifactContent = "";
   const requests: Array<{ url: string; method: string }> = [];
   const request = vi.fn(async (input: URL | RequestInfo, init?: RequestInit) => {
@@ -55,6 +55,7 @@ function fakeGitHub(options: { cleanupFails?: boolean; readbackFails?: boolean; 
     if (url.endsWith("/git/trees") && method === "POST") return jsonResponse({ sha: "tree-sha" }, 201);
     if (url.endsWith("/git/commits") && method === "POST") return jsonResponse({ sha: "commit-sha" }, 201);
     if (url.includes("/contents/.aop-verification/exec_test.json") && method === "PUT") {
+      if (options.writeFails) return jsonResponse({ message: "Unavailable" }, 503);
       const body = JSON.parse(String(init?.body)) as { content: string };
       artifactContent = Buffer.from(body.content, "base64").toString("utf8");
       return jsonResponse({ commit: { sha: "artifact-commit" } }, 201);
@@ -147,6 +148,20 @@ describe("controlled GitHub verification runner", () => {
     expect(result.code).toBe("FAILED");
     expect(result.verified).toBe(false);
     expect(fake.requests.some((item) => item.method === "DELETE" && item.url.includes("/git/refs/heads/"))).toBe(true);
+  });
+
+
+  it("cleans the temporary branch when artifact writing fails", async () => {
+    setupEnv();
+    const fake = fakeGitHub({ writeFails: true });
+    const result = await runControlledGitHubVerification(repository, "exec_test", {
+      createToken: vi.fn(async () => ({ token: "mock-token", permissions: { contents: "write" } })),
+      request: fake.request as typeof fetch,
+    });
+    expect(result.code).toBe("FAILED");
+    expect(result.verified).toBe(false);
+    expect(fake.requests.some((item) => item.method === "PUT" && item.url.includes("/contents/.aop-verification/exec_test.json"))).toBe(true);
+    expect(fake.requests.some((item) => item.method === "DELETE" && item.url.includes("/git/refs/heads/github-verification/exec_test"))).toBe(true);
   });
 
   it("never reports success when remote readback fails", async () => {
