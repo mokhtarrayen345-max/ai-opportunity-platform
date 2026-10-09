@@ -82,7 +82,7 @@ export async function runControlledVerification(
       authorizedBy: userId,
     });
 
-    const meta = await (provider || new GitHubRepositoryProvider()).validateAuthorizedRepository(repo, true);
+    await (provider || new GitHubRepositoryProvider()).validateAuthorizedRepository(repo, true);
     if (!verificationBranch(id)) {
       throw new Error("Controlled verification preflight failed.");
     }
@@ -117,7 +117,7 @@ export async function runControlledVerification(
 
     if (!result.verified || !result.remoteVerified || !result.cleanupSucceeded || result.code !== "VERIFIED_AND_CLEANED") {
       await transitionExecution(p, id, "TESTING");
-        await transitionExecution(p, id, "FAILED", {
+      await transitionExecution(p, id, "FAILED", {
         completedAt: new Date(),
         error: "Controlled GitHub verification failed or cleanup was incomplete.",
         summary: "Real controlled verification did not complete with verified remote state and successful cleanup.",
@@ -128,7 +128,6 @@ export async function runControlledVerification(
     await transitionExecution(p, id, "TESTING", {
       summary: "Remote GitHub artifact verified; temporary branch cleanup succeeded.",
     });
-    currentState = "TESTING";
     await transitionExecution(p, id, "SUCCEEDED", {
       completedAt: new Date(),
       summary: "Real controlled GitHub write/readback verification succeeded and temporary branch cleanup completed.",
