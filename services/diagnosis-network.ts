@@ -256,7 +256,7 @@ export async function requestPinnedDiagnostic(
     try {
       request = requestFactory(url.protocol as "http:" | "https:", options, (response: DiagnosticResponseHandle) => {
       const declaredLength = Number(response.headers["content-length"]);
-      if (Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) {
+      if (method !== "HEAD" && Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) {
         response.destroy();
         request?.destroy();
         clearTimeout(timer);
