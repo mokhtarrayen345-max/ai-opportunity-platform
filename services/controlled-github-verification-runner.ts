@@ -27,6 +27,7 @@ export type VerificationRunnerResult = {
   artifactPath: string | null;
   remoteVerified: boolean;
   cleanupSucceeded: boolean;
+  tokenRevocationSucceeded: boolean;
   code: "VERIFIED_AND_CLEANED" | "VERIFIED_CLEANUP_FAILED" | "BLOCKED" | "FAILED";
 };
 
@@ -56,7 +57,7 @@ export async function runControlledGitHubVerification(
 ): Promise<VerificationRunnerResult> {
   const deps = { ...defaults, ...dependencies };
   const blocked = (): VerificationRunnerResult => ({
-    verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, code: "BLOCKED",
+    verified: false, branch: null, artifactPath: null, remoteVerified: false, cleanupSucceeded: true, tokenRevocationSucceeded: true, code: "BLOCKED",
   });
   if (process.env.GITHUB_CONTROLLED_VERIFICATION_ENABLED !== "true") return blocked();
   if (process.env.GITHUB_REPAIR_EXECUTION_ENABLED !== "false") return blocked();
@@ -80,6 +81,7 @@ export async function runControlledGitHubVerification(
   let branchMayExist = false;
   let remoteVerified = false;
   let cleanupSucceeded = true;
+  let tokenRevocationSucceeded = true;
 
   const call = async (path: string, init: RequestInit = {}, allowNotFound = false) => {
     const url = new URL(path, API);
@@ -217,7 +219,7 @@ export async function runControlledGitHubVerification(
     }
     if (token) {
       try {
-        await deps.request(new URL("/installation/token", API), {
+        const revokeResponse = await deps.request(new URL("/installation/token", API), {
           method: "DELETE",
           headers: {
             Accept: "application/vnd.github+json",
@@ -226,17 +228,18 @@ export async function runControlledGitHubVerification(
           },
           signal: AbortSignal.timeout(10000),
         });
+        tokenRevocationSucceeded = revokeResponse.ok || revokeResponse.status === 404;
       } catch {
-        // Best-effort token revocation.
+        tokenRevocationSucceeded = false;
       }
     }
   }
 
   if (remoteVerified && cleanupSucceeded) {
-    return { verified: true, branch, artifactPath, remoteVerified: true, cleanupSucceeded: true, code: "VERIFIED_AND_CLEANED" };
+    return { verified: true, branch, artifactPath, remoteVerified: true, cleanupSucceeded: true, tokenRevocationSucceeded, code: "VERIFIED_AND_CLEANED" };
   }
   if (remoteVerified) {
-    return { verified: false, branch, artifactPath, remoteVerified: true, cleanupSucceeded: false, code: "VERIFIED_CLEANUP_FAILED" };
+    return { verified: false, branch, artifactPath, remoteVerified: true, cleanupSucceeded: false, tokenRevocationSucceeded, code: "VERIFIED_CLEANUP_FAILED" };
   }
-  return { verified: false, branch, artifactPath, remoteVerified: false, cleanupSucceeded, code: "FAILED" };
+  return { verified: false, branch, artifactPath, remoteVerified: false, cleanupSucceeded, tokenRevocationSucceeded, code: "FAILED" };
 }
