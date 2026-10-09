@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const repoSchema = z.string().regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/);
 const protectedBranches = new Set(["main", "master", "production", "prod"]);
+const CONTROLLED_VERIFICATION_REPOSITORY = "mokhtarrayen345-max/ai-opportunity-github-verification-test";
 
 export const controlledVerificationConfigStatusSchema = z.enum([
   "DISABLED",
@@ -63,7 +64,7 @@ function privateKeyValid(): boolean {
 
 export function getControlledVerificationConfigReport(): ControlledVerificationConfigReport {
   const enabled = process.env.GITHUB_CONTROLLED_VERIFICATION_ENABLED === "true";
-  const repairDisabled = process.env.GITHUB_REPAIR_EXECUTION_ENABLED !== "true";
+  const repairDisabled = process.env.GITHUB_REPAIR_EXECUTION_ENABLED === "false";
   const appIdConfigured = present("GITHUB_APP_ID");
   const clientConfigurationConfigured =
     present("GITHUB_APP_CLIENT_ID") && present("GITHUB_APP_CLIENT_SECRET") && present("GITHUB_APP_SLUG");
@@ -73,7 +74,7 @@ export function getControlledVerificationConfigReport(): ControlledVerificationC
   const repoConfigured = Boolean(repo);
   const repoValid = repoConfigured && repoSchema.safeParse(repo).success;
   const repoAllowlisted = repoValid && allowlisted(repo);
-  const repoSafe = repoValid && isSafeVerificationRepository(repo);
+  const repoSafe = repoValid && isSafeVerificationRepository(repo) && repo === CONTROLLED_VERIFICATION_REPOSITORY;
 
   const checks = {
     controlledVerificationEnabled: enabled,
