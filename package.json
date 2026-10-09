@@ -6,14 +6,15 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint app components lib services tests",
+    "lint": "eslint services/controlled-github-verification-runner.ts services/controlled-github-verification-runner.test.ts services/controlled-github-verification.ts services/controlled-github-verification-config.ts app/api/github/controlled-verification/route.ts tests/controlled-github-verification-api.test.ts tests/controlled-github-verification-prep.test.ts",
     "test": "prisma generate && vitest run",
     "test:watch": "vitest",
     "typecheck": "prisma generate && tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "lint:all": "eslint app components lib services tests"
   },
   "dependencies": {
     "next": "^16.3.4",
