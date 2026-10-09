@@ -126,11 +126,11 @@ export async function runControlledVerification(
     }
 
     await transitionExecution(p, id, "TESTING", {
-      summary: "Remote GitHub artifact verified; temporary branch cleanup succeeded.",
+      summary: `Remote artifact verified; temporary branch cleanup succeeded; token revocation ${result.tokenRevocationSucceeded ? "was confirmed" : "was not confirmed and relies on token expiry"}.`,
     });
     await transitionExecution(p, id, "SUCCEEDED", {
       completedAt: new Date(),
-      summary: "Real controlled GitHub write/readback verification succeeded and temporary branch cleanup completed.",
+      summary: `Real controlled GitHub write/readback verification succeeded and temporary branch cleanup completed; token revocation ${result.tokenRevocationSucceeded ? "was confirmed" : "was not confirmed and relies on token expiry"}.`,
     });
     return { status: "SUCCEEDED", executionId: id, message: "Controlled GitHub verification succeeded and the temporary branch was cleaned up." };
   } catch {
