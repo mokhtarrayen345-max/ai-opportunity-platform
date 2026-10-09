@@ -79,6 +79,7 @@ export async function runControlledGitHubVerification(
   const artifactPath = ".aop-verification/" + executionId + ".json";
   let token: Token | null = null;
   let branchMayExist = false;
+  let branchOwnershipConfirmed = false;
   let remoteVerified = false;
   let cleanupSucceeded = true;
   let tokenRevocationSucceeded = true;
@@ -110,6 +111,9 @@ export async function runControlledGitHubVerification(
         method: "POST",
         body: JSON.stringify({ ref: "refs/heads/" + branch, sha }),
       });
+      // Only a confirmed successful response establishes ownership of this ref.
+      // A timeout or lost response is ambiguous: never delete a possibly pre-existing ref.
+      branchOwnershipConfirmed = true;
     } catch (error) {
       if (error instanceof GitHubHttpError && error.status >= 400 && error.status < 500) {
         branchMayExist = false;
@@ -201,20 +205,26 @@ export async function runControlledGitHubVerification(
     // Provider details, responses, and credentials remain server-side.
   } finally {
     if (branchMayExist && token) {
-      try {
-        const url = new URL(base + "/git/refs/heads/" + branch.split("/").map(encodeURIComponent).join("/"), API);
-        const response = await deps.request(url, {
-          method: "DELETE",
-          headers: {
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": API_VERSION,
-            Authorization: "Bearer " + token.token,
-          },
-          signal: AbortSignal.timeout(10000),
-        });
-        cleanupSucceeded = response.ok || response.status === 404;
-      } catch {
+      if (!branchOwnershipConfirmed) {
+        // Creation may have succeeded remotely, but ownership cannot be proven
+        // after a lost response. Fail closed instead of deleting a pre-existing ref.
         cleanupSucceeded = false;
+      } else {
+        try {
+          const url = new URL(base + "/git/refs/heads/" + branch.split("/").map(encodeURIComponent).join("/"), API);
+          const response = await deps.request(url, {
+            method: "DELETE",
+            headers: {
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": API_VERSION,
+              Authorization: "Bearer " + token.token,
+            },
+            signal: AbortSignal.timeout(10000),
+          });
+          cleanupSucceeded = response.ok || response.status === 404;
+        } catch {
+          cleanupSucceeded = false;
+        }
       }
     }
     if (token) {
