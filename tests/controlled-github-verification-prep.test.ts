@@ -94,6 +94,24 @@ describe("controlled verification preflight API", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("rejects unauthenticated preflight requests", async () => {
+    routeMocks.user.mockResolvedValue(null);
+    validEnvironment();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { GET } = await import("@/app/api/github/verification-preflight/route");
+    const response = await GET();
+    expect(response.status).toBe(401);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects unauthenticated controlled verification requests before calling the service", async () => {
+    routeMocks.user.mockResolvedValue(null);
+    const { POST } = await import("@/app/api/github/controlled-verification/route");
+    const response = await POST(new Request("http://localhost/api/github/controlled-verification", { method: "POST", body: "" }));
+    expect(response.status).toBe(401);
+    expect(JSON.stringify(await response.json())).not.toContain("token");
+  });
+
   it("does not expose credentials or tokens", async () => {
     routeMocks.user.mockResolvedValue({ id: "u1" });
     validEnvironment();
