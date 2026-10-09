@@ -3,7 +3,7 @@ import http from "node:http";
 import https from "node:https";
 import net from "node:net";
 import type { LookupFunction } from "node:dns";
-import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
+import type { IncomingHttpHeaders } from "node:http";
 import type { TLSSocket } from "node:tls";
 
 export type ResolvedDiagnosticAddress = { address: string; family: 4 | 6 };
@@ -28,6 +28,33 @@ export type PinnedDiagnosticResponse = {
   body: string;
   durationMs: number;
   validTo: string | null;
+};
+
+export type DiagnosticResponseHandle = {
+  statusCode?: number;
+  headers: IncomingHttpHeaders;
+  socket?: TLSSocket;
+  on(event: "data", listener: (chunk: Buffer | string) => void): unknown;
+  on(event: "error", listener: (error: Error) => void): unknown;
+  on(event: "end", listener: () => void): unknown;
+  destroy(): void;
+};
+export type DiagnosticRequestHandle = {
+  on(event: "error", listener: (error: Error) => void): unknown;
+  end(): void;
+  destroy(): void;
+};
+export type DiagnosticRequestFactory = (
+  protocol: "http:" | "https:",
+  options: PinnedRequestOptions,
+  onResponse: (response: DiagnosticResponseHandle) => void,
+) => DiagnosticRequestHandle;
+
+const defaultRequestFactory: DiagnosticRequestFactory = (protocol, options, onResponse) => {
+  if (protocol === "https:") {
+    return https.request(options as https.RequestOptions, response => onResponse(response)) as unknown as DiagnosticRequestHandle;
+  }
+  return http.request(options as http.RequestOptions, response => onResponse(response)) as unknown as DiagnosticRequestHandle;
 };
 
 const defaultResolver: DiagnosticResolver = async hostname =>
@@ -207,6 +234,7 @@ export async function requestPinnedDiagnostic(
   method: DiagnosticMethod = "GET",
   maxBodyBytes = 1024 * 1024,
   timeoutMs = 8000,
+  requestFactory: DiagnosticRequestFactory = defaultRequestFactory,
 ): Promise<PinnedDiagnosticResponse> {
   const url = resolution.url;
   const options = buildPinnedRequestOptions(resolution, method, timeoutMs);
@@ -225,7 +253,7 @@ export async function requestPinnedDiagnostic(
       request.destroy();
       finishError("Diagnostic request timed out.");
     }, timeoutMs);
-    const request = transport.request(options, (response: IncomingMessage) => {
+    const request = requestFactory(url.protocol as "http:" | "https:", options, (response: DiagnosticResponseHandle) => {
       const declaredLength = Number(response.headers["content-length"]);
       if (Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) {
         response.destroy();
