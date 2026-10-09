@@ -51,10 +51,12 @@ The controlled run must:
 3. Validate the server-configured verification repository and allowlist.
 4. Generate `github-verification/<execution-id>` server-side.
 5. Reject protected/default production targets.
-6. Perform only the minimum verification write supported by the controlled runner.
-7. Keep execution-state changes behind the centralized state machine.
-8. Produce safe audit metadata only.
-9. Clean up the verification branch/workspace when supported by the runner.
+6. Perform only the minimum verification write supported by the controlled runner. The default branch is read-only and is never updated.
+7. If the dedicated repository is empty and has no ref, create an orphan commit containing only the verification artifact, then create the temporary verification ref. Do not initialize or modify the default branch.
+8. Read the artifact back through the GitHub API and compare its exact contents before reporting remote verification success.
+9. Keep execution-state changes behind the centralized state machine.
+10. Produce safe audit metadata only.
+11. Delete the temporary verification branch and revoke the installation token on a best-effort basis. Any cleanup failure prevents a successful final result.
 
 A mocked result, passing CI, or preflight response is not evidence of real GitHub execution.
 
