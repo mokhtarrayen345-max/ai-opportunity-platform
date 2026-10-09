@@ -235,7 +235,7 @@ export async function runControlledGitHubVerification(
     }
   }
 
-  if (remoteVerified && cleanupSucceeded) {
+  if (remoteVerified && cleanupSucceeded && tokenRevocationSucceeded) {
     return { verified: true, branch, artifactPath, remoteVerified: true, cleanupSucceeded: true, tokenRevocationSucceeded, code: "VERIFIED_AND_CLEANED" };
   }
   if (remoteVerified) {
