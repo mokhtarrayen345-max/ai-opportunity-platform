@@ -76,8 +76,9 @@ export class GitHubRepositoryProvider{
   }
   async deleteBranch(repo:AuthorizedRepo,branch:string){
     if(process.env.GITHUB_REPAIR_EXECUTION_ENABLED!=="true")throw new Error("GitHub repair write execution is disabled by default.");
+    if(!safeBranch.test(branch)||protectedBranches.has(branch))throw new Error("Unsafe repair branch.");
     const meta=await this.validateAuthorizedRepository(repo);
-    if(!safeBranch.test(branch)||protectedBranches.has(branch)||branch===meta.defaultBranch)throw new Error("Unsafe repair branch.");
+    if(branch===meta.defaultBranch)throw new Error("Unsafe repair branch.");
     const token=await createInstallationToken(repo.installationId!,repo.githubRepositoryId!,true);
     try{
       const path="/repos/"+encodeURIComponent(meta.owner)+"/"+encodeURIComponent(meta.name)+"/git/refs/heads/"+branch.split("/").map(encodeURIComponent).join("/");
