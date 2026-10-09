@@ -6,10 +6,11 @@ This document is the operator runbook for the first real controlled GitHub verif
 
 - `GITHUB_CONTROLLED_VERIFICATION_ENABLED=false` by default.
 - `GITHUB_REPAIR_EXECUTION_ENABLED=false` must remain false.
+- The only supported verification target is `mokhtarrayen345-max/ai-opportunity-github-verification-test`; configuration must match this exact value.
 - The verification repository is server-configured and explicitly allowlisted.
 - The client supplies no repository, branch, command, or write target.
 - The server generates `github-verification/<execution-id>`.
-- `main`, `master`, `production`, and `prod` are protected targets.
+- The default branch is used only as a read-only base when it exists; the runner never updates it. An empty repository uses an orphan verification commit.
 - GitHub App credentials remain server-side and are never returned or logged.
 - CI uses mocks/fakes only.
 - No PAT is supported.
@@ -23,10 +24,10 @@ Before enabling the controlled verification flag in a dedicated verification env
 2. Configure `GITHUB_APP_ID`.
 3. Provide `GITHUB_APP_PRIVATE_KEY` through the approved server secret mechanism. Never put the key in source control, browser configuration, tests, fixtures, or logs.
 4. Configure the existing App/client settings required by the authorization architecture: `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, and `GITHUB_APP_SLUG`.
-5. Install the GitHub App on a dedicated non-production verification repository.
-6. Set `GITHUB_CONTROLLED_VERIFICATION_REPOSITORY=owner/repository`.
-7. Add the exact same `owner/repository` to `GITHUB_ALLOWED_REPOSITORIES`.
-8. Confirm the repository is not a production repository and that its default/protected branch cannot be modified by the verification.
+5. Install the GitHub App on the dedicated repository `mokhtarrayen345-max/ai-opportunity-github-verification-test`.
+6. Set `GITHUB_CONTROLLED_VERIFICATION_REPOSITORY=mokhtarrayen345-max/ai-opportunity-github-verification-test`.
+7. Add that exact repository to `GITHUB_ALLOWED_REPOSITORIES`.
+8. Confirm the repository is non-production and contains no valuable data. The runner may create and delete a temporary branch and write a harmless verification artifact on that branch.
 9. Confirm `GITHUB_REPAIR_EXECUTION_ENABLED=false`.
 10. Confirm the preflight endpoint reports `READY_FOR_MANUAL_VERIFICATION`. This status proves only local configuration prerequisites; it does not prove GitHub execution.
 11. Confirm the readiness audit still reports `REAL_VERIFICATION_STATUS=NOT_PERFORMED` and overall readiness is not `READY`.
@@ -48,15 +49,14 @@ The controlled run must:
 
 1. Authenticate the platform user.
 2. Validate the existing GitHub App authorization and active authorized repository.
-3. Validate the server-configured verification repository and allowlist.
+3. Validate the exact server-configured verification repository and allowlist.
 4. Generate `github-verification/<execution-id>` server-side.
-5. Reject protected/default production targets.
-6. Perform only the minimum verification write supported by the controlled runner. The default branch is read-only and is never updated.
-7. If the dedicated repository is empty and has no ref, create an orphan commit containing only the verification artifact, then create the temporary verification ref. Do not initialize or modify the default branch.
-8. Read the artifact back through the GitHub API and compare its exact contents before reporting remote verification success.
-9. Keep execution-state changes behind the centralized state machine.
-10. Produce safe audit metadata only.
-11. Delete the temporary verification branch and revoke the installation token on a best-effort basis. Any cleanup failure prevents a successful final result.
+5. Use the existing default branch only as a read-only base when a ref exists.
+6. If the dedicated repository is empty and has no ref, create an orphan commit containing only the verification artifact, then create the temporary verification ref. Do not initialize or modify the default branch.
+7. Read the artifact back through the GitHub API and compare its exact contents before reporting remote verification success.
+8. Keep execution-state changes behind the centralized state machine.
+9. Produce safe audit metadata only.
+10. Delete the temporary verification branch. A branch cleanup failure prevents a successful final result. Installation-token revocation is attempted on a best-effort basis; the token also expires according to GitHub's token lifetime.
 
 A mocked result, passing CI, or preflight response is not evidence of real GitHub execution.
 
@@ -69,7 +69,7 @@ Record only:
 - result
 - generated verification branch
 - safe execution state
-- cleanup result
+- branch cleanup result
 
 Never record:
 
