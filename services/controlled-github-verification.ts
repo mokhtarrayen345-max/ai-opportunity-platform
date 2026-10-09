@@ -98,7 +98,7 @@ export async function runControlledVerification(
       error: null,
     });
 
-    if (process.env.NODE_ENV === "test" || process.env.GITHUB_CONTROLLED_VERIFICATION_MOCK === "true") {
+    if (process.env.NODE_ENV === "test") {
       await transitionExecution(p, id, "TESTING");
       await transitionExecution(p, id, "SUCCEEDED", {
         completedAt: new Date(),
