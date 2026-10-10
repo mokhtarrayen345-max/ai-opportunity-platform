@@ -81,7 +81,7 @@ describe("diagnostic destination validation", () => {
   it("rejects DNS answers containing a private address even when a public answer is present", async () => {
     const resolver = resolverFor(publicV4, { address: "10.0.0.7", family: 4 });
     await expect(resolveSafeDiagnosticUrl("https://example.com/", undefined, resolver))
-      .rejects.toThrow("non-public network address");
+      .rejects.toThrow("private or local network address");
   });
 
   it("rejects DNS errors and empty answers", async () => {
@@ -212,7 +212,7 @@ describe("pinned redirect handling", () => {
       .mockResolvedValueOnce([{ address: "127.0.0.1", family: 4 }]);
     const request = vi.fn().mockResolvedValue(response(302, { location: "/next" }));
     await expect(fetchPinnedWithRedirects("https://example.com/start", "https://example.com/start", { resolver, request }))
-      .rejects.toThrow("non-public network address");
+      .rejects.toThrow("private or local network address");
     expect(request).toHaveBeenCalledTimes(1);
   });
 
