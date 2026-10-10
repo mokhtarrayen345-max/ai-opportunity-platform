@@ -2,9 +2,10 @@ import dns from "node:dns/promises";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
-import type { LookupFunction } from "node:dns";
 import type { IncomingHttpHeaders } from "node:http";
 import type { TLSSocket } from "node:tls";
+
+type LookupFunction = NonNullable<http.RequestOptions["lookup"]>;
 
 export type ResolvedDiagnosticAddress = { address: string; family: 4 | 6 };
 export type DiagnosticResolver = (hostname: string) => Promise<Array<{ address: string; family: number }>>;
@@ -33,7 +34,7 @@ export type PinnedDiagnosticResponse = {
 export type DiagnosticResponseHandle = {
   statusCode?: number;
   headers: IncomingHttpHeaders;
-  socket?: TLSSocket;
+  socket?: { getPeerCertificate?: () => { valid_to?: string } };
   on(event: "data", listener: (chunk: Buffer | string) => void): unknown;
   on(event: "error", listener: (error: Error) => void): unknown;
   on(event: "end", listener: () => void): unknown;
@@ -52,9 +53,9 @@ export type DiagnosticRequestFactory = (
 
 const defaultRequestFactory: DiagnosticRequestFactory = (protocol, options, onResponse) => {
   if (protocol === "https:") {
-    return https.request(options as https.RequestOptions, response => onResponse(response)) as unknown as DiagnosticRequestHandle;
+    return https.request(options as https.RequestOptions, response => onResponse(response as unknown as DiagnosticResponseHandle)) as unknown as DiagnosticRequestHandle;
   }
-  return http.request(options as http.RequestOptions, response => onResponse(response)) as unknown as DiagnosticRequestHandle;
+  return http.request(options as http.RequestOptions, response => onResponse(response as unknown as DiagnosticResponseHandle)) as unknown as DiagnosticRequestHandle;
 };
 
 const defaultResolver: DiagnosticResolver = async hostname =>
