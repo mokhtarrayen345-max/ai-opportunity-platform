@@ -11,7 +11,6 @@ import {
   type DiagnosticRequestFactory,
   type DiagnosticResponseHandle,
   type PinnedDiagnosticResponse,
-  type SafeDiagnosticResolution,
 } from "@/services/diagnosis-network";
 import { getCertificateMetadata } from "@/services/diagnosis-checks";
 
@@ -54,7 +53,7 @@ function fakeRequestFactory(
         incoming.emit("end");
       });
     };
-    return request as unknown as Parameters<DiagnosticRequestFactory>[0] extends never ? never : ReturnType<DiagnosticRequestFactory>;
+    return request as unknown as ReturnType<DiagnosticRequestFactory>;
   };
 }
 
@@ -137,8 +136,8 @@ describe("pinned diagnostic transport", () => {
   });
 
   it("uses the selected validated IP instead of performing a second DNS lookup", async () => {
-    const resolver = vi.fn(async () => publicV4);
-    const resolved = await resolveSafeDiagnosticUrl("https://example.com/", undefined, async () => [publicV4]);
+    const resolver = resolverFor(publicV4);
+    const resolved = await resolveSafeDiagnosticUrl("https://example.com/", undefined, resolver);
     const lookup = createPinnedLookup("example.com", resolved.addresses);
     const address = await new Promise<string>((resolve, reject) => {
       lookup("example.com", {}, (error, value) => {
@@ -148,7 +147,7 @@ describe("pinned diagnostic transport", () => {
       });
     });
     expect(address).toBe(publicV4.address);
-    expect(resolver).not.toHaveBeenCalled();
+    expect(resolver).toHaveBeenCalledTimes(1);
   });
 
   it("fails if the connection layer requests a hostname other than the validated host", async () => {
