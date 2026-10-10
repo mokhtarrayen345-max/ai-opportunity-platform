@@ -72,6 +72,7 @@ function ipv4IsPublic(address: string): boolean {
   if (a === 192 && b === 0) return false;
   if (a === 192 && b === 2) return false;
   if (a === 192 && b === 88 && c === 99) return false;
+  if (a === 192 && b === 88 && c === 99) return false;
   if (a === 198 && (b === 18 || b === 19)) return false;
   if (a === 198 && b === 51 && c === 100) return false;
   if (a === 203 && b === 0 && c === 113) return false;
@@ -112,7 +113,7 @@ export function isPublicDiagnosticAddress(address: string): boolean {
   if (groups.slice(0, 5).every(g => g === 0) && groups[5] === 0xffff) return false;
   // Only global-unicast space is eligible; known special-use and transition blocks are rejected.
   if (groups[0] < 0x2000 || groups[0] > 0x3fff) return false;
-  if (groups[0] === 0x2001 && (groups[1] <= 0x01ff || groups[1] === 0x0db8)) return false;
+  if (groups[0] === 0x2001 && (groups[1] <= 0x01ff || groups[1] === 0x0db8 || groups[1] === 0xffff)) return false;
   if (groups[0] === 0x2002 || groups[0] === 0x3fff) return false;
   return true;
 }
