@@ -4,7 +4,6 @@ const TIMEOUT_MS=8000,MAX_BODY_BYTES=1024*1024,MAX_REDIRECTS=3,PERF_WARN_MS=1500
 export type SafeTarget={id:string;normalizedUrl:string;protocol:string;healthEndpoint:string|null;apiEndpoint:string|null};
 export type CheckContext={target:SafeTarget;findings:DiagnosticFindingInput[];checksPerformed:string[];checksSkipped:string[]};
 function add(ctx:CheckContext,x:Omit<DiagnosticFindingInput,"targetId"|"estimatedEffortMinutes">){ctx.findings.push({...x,targetId:ctx.target.id,estimatedEffortMinutes:estimateRepairMinutes(x.category,x.severity)})}
-async function readLimited(r:Response){const n=r.headers.get("content-length");if(n&&Number(n)>MAX_BODY_BYTES)throw new Error("Response exceeds the diagnostic size limit.");if(!r.body)return "";const reader=r.body.getReader();let total=0;const parts:Uint8Array[]=[];while(true){const p=await reader.read();if(p.done)break;total+=p.value.byteLength;if(total>MAX_BODY_BYTES){await reader.cancel();throw new Error("Response exceeds the diagnostic size limit.");}parts.push(p.value)}const out=new Uint8Array(total);let o=0;for(const p of parts){out.set(p,o);o+=p.byteLength}return new TextDecoder().decode(out)}
 async function safeFetch(t:SafeTarget,raw:string){
  const result=await fetchPinnedWithRedirects(raw,t.normalizedUrl,{maxRedirects:MAX_REDIRECTS,maxBodyBytes:MAX_BODY_BYTES,timeoutMs:TIMEOUT_MS});
  return {r:{status:result.response.status,headers:result.response.headers},body:result.response.body,duration:result.response.durationMs,redirects:result.redirects,finalUrl:result.finalUrl};
