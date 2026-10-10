@@ -126,7 +126,7 @@ describe("pinned diagnostic transport", () => {
 
   it("pins the HTTPS certificate metadata request and keeps certificate validation enabled", async () => {
     let captured: ReturnType<typeof buildPinnedRequestOptions> | undefined;
-    const factory = fakeRequestFactory(200, {}, "", "Jan  1 00:00:00 2027 GMT", options => { captured = options; });
+    const factory = fakeRequestFactory(200, { "content-length": "50000" }, "", "Jan  1 00:00:00 2027 GMT", options => { captured = options; });
     const metadata = await getCertificateMetadata("https://example.com/", resolverFor(publicV4), factory);
     expect(metadata.validTo).toBe("Jan  1 00:00:00 2027 GMT");
     expect(captured?.method).toBe("HEAD");
